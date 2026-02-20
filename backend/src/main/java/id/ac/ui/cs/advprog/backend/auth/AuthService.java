@@ -19,6 +19,9 @@ public class AuthService {
     }
 
     public void register(String username, String password) {
+        if (userRepository.findByUsername(username).isPresent()) {
+            throw new IllegalArgumentException("username_taken");
+        }
         String hash = passwordEncoder.encode(password);
         userRepository.insert(username, hash);
     }
