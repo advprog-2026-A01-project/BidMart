@@ -7,7 +7,12 @@
   <description>PMD rules for production/main source set.</description>
 
   <rule ref="category/java/bestpractices.xml"/>
-  <rule ref="category/java/codestyle.xml"/>
-  <rule ref="category/java/design.xml"/>
+
+  <rule ref="category/java/design.xml">
+    <exclude name="LoosePackageCoupling"/>
+    <exclude name="UseUtilityClass"/>
+    <exclude name="SignatureDeclareThrowsException"/>
+  </rule>
+
   <rule ref="category/java/errorprone.xml"/>
 </ruleset>

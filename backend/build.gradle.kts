@@ -29,12 +29,21 @@ repositories {
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
+
+    // auth + db
+    implementation("org.springframework.boot:spring-boot-starter-security")
+    implementation("org.springframework.boot:spring-boot-starter-jdbc")
+    runtimeOnly("org.postgresql:postgresql")
+
     compileOnly("org.projectlombok:lombok")
     developmentOnly("org.springframework.boot:spring-boot-devtools")
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
     annotationProcessor("org.projectlombok:lombok")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+    // add: in-memory DB for tests
+    testRuntimeOnly("com.h2database:h2")
 }
 
 tasks.withType<Test> {
@@ -45,6 +54,9 @@ pmd {
     // jangan pakai ruleset default Gradle
     ruleSets = emptyList()
     isConsoleOutput = true
+
+    // penting untuk Java 21 (classfile major 65)
+    toolVersion = "7.11.0"
 }
 
 // set ignoreFailures di task PMD (bukan di extension pmd {})
