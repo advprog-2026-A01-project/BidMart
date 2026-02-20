@@ -1,4 +1,4 @@
-name: CI
+name: CI/CD
 
 on:
   push:
@@ -27,3 +27,18 @@ jobs:
       - name: Build and Test with Gradle
         working-directory: backend
         run: ./gradlew build
+
+  dummy-deploy:
+    name: Dummy Continuous Deployment
+    runs-on: ubuntu-latest
+    needs: build-backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploying to Production
+        run: |
+          echo "CI Quality Check passed successfully!"
+          echo "Simulating deployment to AWS/Production server..."
+          echo "Application has been 'deployed' to dummy environment."
