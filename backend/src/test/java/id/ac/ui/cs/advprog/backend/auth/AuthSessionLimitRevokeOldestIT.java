@@ -23,6 +23,7 @@ import org.springframework.test.web.servlet.MockMvc;
         "auth.max-sessions-per-user=1",
         "auth.overflow-policy=REVOKE_OLDEST"
 })
+@SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
 class AuthSessionLimitRevokeOldestIT {
 
     private static final String AUTHZ = "Authorization";

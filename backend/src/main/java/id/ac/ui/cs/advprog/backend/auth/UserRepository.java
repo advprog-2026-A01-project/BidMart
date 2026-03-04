@@ -1,7 +1,6 @@
 package id.ac.ui.cs.advprog.backend.auth;
 
 import java.sql.PreparedStatement;
-import java.sql.Statement;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -48,7 +47,7 @@ public class UserRepository {
         jdbcTemplate.update(con -> {
             final PreparedStatement ps = con.prepareStatement(
                     "INSERT INTO app_users(username, password_hash, role) VALUES (?, ?, ?)",
-                    new String[]{"id"} // request generated id only
+                    new String[]{"id"}
             );
             ps.setString(1, username);
             ps.setString(2, passwordHash);
@@ -56,23 +55,34 @@ public class UserRepository {
             return ps;
         }, keyHolder);
 
-        // Robust: read the first returned key map
-        final List<Map<String, Object>> keyList = keyHolder.getKeyList();
-        if (!keyList.isEmpty()) {
-            final Map<String, Object> m = keyList.get(0);
-
-            Object idObj = m.get("id");
-            if (idObj == null) idObj = m.get("ID"); // some drivers uppercase it
-
-            if (idObj instanceof Number n) return n.longValue();
-
-            if (!m.isEmpty()) {
-                final Object first = m.values().iterator().next();
-                if (first instanceof Number n2) return n2.longValue();
-            }
-        }
+        final Long id = extractGeneratedId(keyHolder);
+        if (id != null) return id;
 
         throw new IllegalStateException("failed_to_insert_user");
+    }
+
+    private static Long extractGeneratedId(final KeyHolder keyHolder) {
+        final List<Map<String, Object>> keyList = keyHolder.getKeyList();
+        if (keyList.isEmpty()) return null;
+
+        final Map<String, Object> row = keyList.get(0);
+
+        final Object idObj = row.containsKey("id") ? row.get("id") : row.get("ID");
+        final Long direct = toLong(idObj);
+        if (direct != null) return direct;
+
+        // fallback: first numeric value in the key map
+        for (Object v : row.values()) {
+            final Long n = toLong(v);
+            if (n != null) return n;
+        }
+
+        return null;
+    }
+
+    private static Long toLong(final Object obj) {
+        if (obj instanceof Number n) return n.longValue();
+        return null;
     }
 
     public void setDisabled(final long userId, final boolean disabled) {

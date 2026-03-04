@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
 class AuthControllerIT {
 
     private static final String AUTHZ = "Authorization";
@@ -48,21 +49,18 @@ class AuthControllerIT {
 
         final JsonNode loginJson = om.readTree(loginBody);
         final String accessToken = loginJson.get("accessToken").asText();
-        assertThat(accessToken).isNotBlank(); // PMD wants an assert()
+        assertThat(accessToken).isNotBlank();
 
-        mvc.perform(get("/api/auth/me")
-                        .header(AUTHZ, BEARER + accessToken))
+        mvc.perform(get("/api/auth/me").header(AUTHZ, BEARER + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.username").value(username))
                 .andExpect(jsonPath("$.role").value("BUYER"));
 
-        mvc.perform(post("/api/auth/logout")
-                        .header(AUTHZ, BEARER + accessToken))
+        mvc.perform(post("/api/auth/logout").header(AUTHZ, BEARER + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.ok").value(true));
 
-        mvc.perform(get("/api/auth/me")
-                        .header(AUTHZ, BEARER + accessToken))
+        mvc.perform(get("/api/auth/me").header(AUTHZ, BEARER + accessToken))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -79,7 +77,7 @@ class AuthControllerIT {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").value("invalid_credentials"));
 
-        assertThat(true).isTrue(); // PMD assert presence
+        assertThat(true).isTrue();
     }
 
     @Test
@@ -112,8 +110,7 @@ class AuthControllerIT {
         final String newAccess = refreshedJson.get("accessToken").asText();
         assertThat(newAccess).isNotBlank();
 
-        mvc.perform(get("/api/auth/me")
-                        .header(AUTHZ, BEARER + newAccess))
+        mvc.perform(get("/api/auth/me").header(AUTHZ, BEARER + newAccess))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.username").value(username));
 

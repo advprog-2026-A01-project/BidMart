@@ -8,6 +8,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/*
+Tanggung jawab: aturan bisnis auth (register/login/refresh/logout + enforce session limit).
+ */
+
 @Service
 public class AuthService {
 
@@ -21,6 +25,7 @@ public class AuthService {
 
     private final AuthProperties.SessionOverflowPolicy overflowPolicy;
 
+    @SuppressWarnings("PMD.LawOfDemeter")
     public AuthService(
             final UserRepository userRepository,
             final SessionRepository sessionRepository,
