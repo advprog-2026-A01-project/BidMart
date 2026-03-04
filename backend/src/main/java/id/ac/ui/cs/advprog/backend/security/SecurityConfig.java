@@ -24,7 +24,11 @@ public class SecurityConfig {
 
     @Bean
     @Order(0)
-    public SecurityFilterChain apiSecurity(final HttpSecurity http, final TokenAuthFilter tokenAuthFilter) throws Exception {
+    public SecurityFilterChain apiSecurity(
+            final HttpSecurity http,
+            final TokenAuthFilter tokenAuthFilter,
+            final PermissionEnricherFilter permissionEnricherFilter
+    ) throws Exception {
         return http
                 .securityMatcher("/**")
                 .csrf(AbstractHttpConfigurer::disable)
@@ -50,20 +54,28 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // Auth endpoints MUST be public
-                        .requestMatchers(HttpMethod.POST, "/api/auth/register").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
+                        // auth public (tambahkan sesuai implementasi kamu: verify-email, 2fa/verify kalau ada)
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/auth/register",
+                                "/api/auth/login",
+                                "/api/auth/refresh",
+                                "/api/auth/verify-email",
+                                "/api/auth/2fa/verify"
+                        ).permitAll()
 
-                        // Hanya untuk ADMIN utk /api/admin
+                        // public profile for catalog
+                        .requestMatchers(HttpMethod.GET, "/api/users/*/public-profile").permitAll()
+
+                        // admin only
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
-                        // DB ping public for healthcheck
+                        // healthcheck
                         .requestMatchers(HttpMethod.GET, "/api/db/ping").permitAll()
 
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(tokenAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(permissionEnricherFilter, TokenAuthFilter.class)
                 .build();
     }
 }

@@ -13,20 +13,20 @@ Tanggung jawab: mapping exception → response JSON stabil.
 @RestControllerAdvice
 public class AuthExceptionHandler {
 
+    private static final String ERROR_KEY = "error";
+
     @ExceptionHandler(AuthException.class)
     public ResponseEntity<?> handleAuthException(final AuthException ex) {
-        return ResponseEntity.status(ex.getStatus()).body(Map.of("error", ex.getCode()));
+        return ResponseEntity.status(ex.getStatus()).body(Map.of(ERROR_KEY, ex.getCode()));
     }
 
     @ExceptionHandler(DuplicateKeyException.class)
     public ResponseEntity<?> handleDuplicateKey() {
-        // keep error code stable for frontend
-        return ResponseEntity.status(409).body(Map.of("error", "username_taken"));
+        return ResponseEntity.status(409).body(Map.of(ERROR_KEY, "username_taken"));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<?> handleIllegalArgument(final IllegalArgumentException ex) {
-        // generic fallback (input validation, etc.)
-        return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        return ResponseEntity.badRequest().body(Map.of(ERROR_KEY, ex.getMessage()));
     }
 }

@@ -1,10 +1,8 @@
 package id.ac.ui.cs.advprog.backend.auth;
 
-import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.Map;
-
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,15 +14,18 @@ public class AdminUserController {
 
     private final UserRepository userRepository;
     private final SessionRepository sessionRepository;
+    private final RbacRepository rbacRepository;
     private final ClockHolder clockHolder;
 
     public AdminUserController(
             final UserRepository userRepository,
             final SessionRepository sessionRepository,
+            final RbacRepository rbacRepository,
             final ClockHolder clockHolder
     ) {
         this.userRepository = userRepository;
         this.sessionRepository = sessionRepository;
+        this.rbacRepository = rbacRepository;
         this.clockHolder = clockHolder;
     }
 
@@ -35,12 +36,14 @@ public class AdminUserController {
 
     @PostMapping("/{id}/role")
     public ResponseEntity<?> setRole(@PathVariable("id") final long id, @RequestBody final RoleUpdate body) {
-        final Role role = parseRole(body.role());
-        if (role == null) {
-            return ResponseEntity.badRequest().body(err("invalid_role"));
+        final String roleName = normalizeRoleName(body.role());
+        if (roleName == null) return ResponseEntity.badRequest().body(err("invalid_role"));
+
+        if (!rbacRepository.roleExists(roleName)) {
+            return ResponseEntity.badRequest().body(err("role_not_found"));
         }
 
-        userRepository.updateRole(id, role);
+        userRepository.updateRoleName(id, roleName);
         return ResponseEntity.ok(Map.of("ok", true));
     }
 
@@ -49,7 +52,6 @@ public class AdminUserController {
         final boolean disabled = body.disabled();
         userRepository.setDisabled(id, disabled);
 
-        // If disabled, invalidate all sessions
         if (disabled) {
             sessionRepository.revokeAllByUserId(id, Instant.now(clockHolder.clock()));
         }
@@ -61,15 +63,12 @@ public class AdminUserController {
         return Map.of(ERROR_KEY, code);
     }
 
-    private static Role parseRole(final String role) {
-        if (role == null) return null;
-        final String r = role.trim().toUpperCase(Locale.ROOT);
-        return switch (r) {
-            case "ADMIN" -> Role.ADMIN;
-            case "SELLER" -> Role.SELLER;
-            case "BUYER" -> Role.BUYER;
-            default -> null;
-        };
+    private static String normalizeRoleName(final String raw) {
+        if (raw == null) return null;
+        final String s = raw.trim();
+        if (s.isBlank()) return null;
+        if (!s.matches("[A-Za-z0-9_\\-]{3,64}")) return null;
+        return s.toUpperCase(Locale.ROOT);
     }
 
     public record RoleUpdate(String role) {}

@@ -1,8 +1,8 @@
 package id.ac.ui.cs.advprog.backend.auth;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -29,6 +29,10 @@ public class SessionRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    private static OffsetDateTime odt(final Instant t) {
+        return OffsetDateTime.ofInstant(t, ZoneOffset.UTC);
+    }
+
     public TokenPair create(
             final long userId,
             final Instant now,
@@ -41,19 +45,19 @@ public class SessionRepository {
         final UUID refreshToken = UUID.randomUUID();
 
         jdbcTemplate.update(
-        """
-            INSERT INTO app_sessions(token, refresh_token, user_id, created_at, last_seen_at, expires_at, refresh_expires_at, user_agent, ip)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            accessToken,
-            refreshToken,
-            userId,
-            odt(now),
-            odt(now),
-            odt(accessExpiresAt),
-            odt(refreshExpiresAt),
-            userAgent,
-            ip
+                """
+                INSERT INTO app_sessions(token, refresh_token, user_id, created_at, last_seen_at, expires_at, refresh_expires_at, user_agent, ip)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                accessToken,
+                refreshToken,
+                userId,
+                odt(now),
+                odt(now),
+                odt(accessExpiresAt),
+                odt(refreshExpiresAt),
+                userAgent,
+                ip
         );
 
         return new TokenPair(accessToken, refreshToken, accessExpiresAt, refreshExpiresAt);
@@ -68,28 +72,27 @@ public class SessionRepository {
         }
 
         final var rows = jdbcTemplate.query(
-        """
-            SELECT u.id AS user_id, u.username, u.role
-            FROM app_sessions s
-            JOIN app_users u ON u.id = s.user_id
-            WHERE s.token = ?
-              AND (s.revoked_at IS NULL)
-              AND (s.expires_at IS NULL OR s.expires_at > ?)
-              AND (u.is_disabled = FALSE)
-            """,
+                """
+                SELECT u.id AS user_id, u.username, u.role
+                FROM app_sessions s
+                JOIN app_users u ON u.id = s.user_id
+                WHERE s.token = ?
+                  AND (s.revoked_at IS NULL)
+                  AND (s.expires_at IS NULL OR s.expires_at > ?)
+                  AND (u.is_disabled = FALSE)
+                """,
                 (rs, n) -> new AuthSession(
                         rs.getLong("user_id"),
                         rs.getString("username"),
-                        Role.fromDb(rs.getString("role"))
+                        rs.getString("role")
                 ),
                 token,
                 odt(now)
         );
+
         if (rows.isEmpty()) return Optional.empty();
 
-        // best-effort last-seen update
         jdbcTemplate.update("UPDATE app_sessions SET last_seen_at = ? WHERE token = ?", odt(now), token);
-
         return Optional.of(rows.get(0));
     }
 
@@ -124,7 +127,6 @@ public class SessionRepository {
 
         final long userId = userIds.get(0);
 
-        // revoke old session row (hard delete to keep schema simple)
         jdbcTemplate.update("DELETE FROM app_sessions WHERE refresh_token = ?", refreshToken);
 
         return Optional.of(create(userId, now, newAccessExpiresAt, newRefreshExpiresAt, userAgent, ip));
@@ -140,11 +142,6 @@ public class SessionRepository {
         jdbcTemplate.update("UPDATE app_sessions SET revoked_at = ? WHERE token = ?", odt(now), token);
     }
 
-    // Fungsi helper untuk login pakai fungsi countActiveSessions()
-    private static OffsetDateTime odt(final Instant t) {
-        return OffsetDateTime.ofInstant(t, ZoneOffset.UTC);
-    }
-
     public int countActiveSessions(final long userId, final Instant now) {
         final Integer n = jdbcTemplate.queryForObject(
                 """
@@ -156,7 +153,7 @@ public class SessionRepository {
                 """,
                 Integer.class,
                 userId,
-                odt(now) // Ini yang diubah
+                odt(now)
         );
         return n == null ? 0 : n;
     }
@@ -195,10 +192,10 @@ public class SessionRepository {
                 """,
                 (rs, n) -> new SessionRow(
                         (UUID) rs.getObject("token"),
-                        rs.getObject("created_at", java.time.OffsetDateTime.class),
-                        rs.getObject("last_seen_at", java.time.OffsetDateTime.class),
-                        rs.getObject("expires_at", java.time.OffsetDateTime.class),
-                        rs.getObject("revoked_at", java.time.OffsetDateTime.class),
+                        rs.getObject("created_at", OffsetDateTime.class),
+                        rs.getObject("last_seen_at", OffsetDateTime.class),
+                        rs.getObject("expires_at", OffsetDateTime.class),
+                        rs.getObject("revoked_at", OffsetDateTime.class),
                         rs.getString("user_agent"),
                         rs.getString("ip")
                 ),
@@ -206,7 +203,6 @@ public class SessionRepository {
         );
     }
 
-    // Update SessionRepository.java untuk revoke semua sesi user
     public int revokeAllByUserId(final long userId, final Instant now) {
         return jdbcTemplate.update(
                 "UPDATE app_sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL",
@@ -215,16 +211,23 @@ public class SessionRepository {
         );
     }
 
-    public record AuthSession(long userId, String username, Role role) {}
+    public int revokeByTokenAndUserId(final UUID token, final long userId, final Instant now) {
+        return jdbcTemplate.update(
+                "UPDATE app_sessions SET revoked_at = ? WHERE token = ? AND user_id = ? AND revoked_at IS NULL",
+                odt(now), token, userId
+        );
+    }
+
+    public record AuthSession(long userId, String username, String role) {}
 
     public record TokenPair(UUID accessToken, UUID refreshToken, Instant accessExpiresAt, Instant refreshExpiresAt) {}
 
     public record SessionRow(
             UUID token,
-            java.time.OffsetDateTime createdAt,
-            java.time.OffsetDateTime lastSeenAt,
-            java.time.OffsetDateTime expiresAt,
-            java.time.OffsetDateTime revokedAt,
+            OffsetDateTime createdAt,
+            OffsetDateTime lastSeenAt,
+            OffsetDateTime expiresAt,
+            OffsetDateTime revokedAt,
             String userAgent,
             String ip
     ) {}

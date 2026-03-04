@@ -1,7 +1,6 @@
 package id.ac.ui.cs.advprog.backend.auth;
 
 import java.sql.PreparedStatement;
-import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -17,7 +16,6 @@ Tanggung jawab: operasi DB untuk user.
 - insert
 - setDisabled (fondasi admin)
 */
-
 @Repository
 public class UserRepository {
 
@@ -29,13 +27,20 @@ public class UserRepository {
 
     public Optional<UserRow> findByUsername(final String username) {
         final var rows = jdbcTemplate.query(
-                "SELECT id, username, password_hash, role, is_disabled FROM app_users WHERE username = ?",
+                """
+                SELECT id, username, password_hash, role, is_disabled, email_verified, mfa_enabled, mfa_method
+                FROM app_users
+                WHERE username = ?
+                """,
                 (rs, n) -> new UserRow(
                         rs.getLong("id"),
                         rs.getString("username"),
                         rs.getString("password_hash"),
                         Role.fromDb(rs.getString("role")),
-                        rs.getBoolean("is_disabled")
+                        rs.getBoolean("is_disabled"),
+                        rs.getBoolean("email_verified"),
+                        rs.getBoolean("mfa_enabled"),
+                        rs.getString("mfa_method")
                 ),
                 username
         );
@@ -58,58 +63,117 @@ public class UserRepository {
 
         final Long id = extractGeneratedId(keyHolder);
         if (id != null) return id;
-
         throw new IllegalStateException("failed_to_insert_user");
     }
-
-    // Kumpulin semua list of users
-    public List<UserSummary> listUsers() {
-        return jdbcTemplate.query(
-                "SELECT id, username, role, is_disabled, created_at FROM app_users ORDER by id",
-                (rs, n) -> new UserSummary(
-                        rs.getLong("id"),
-                        rs.getString("username"),
-                        Role.fromDb(rs.getString("role")).name(),
-                        rs.getBoolean("is_disabled"),
-                        rs.getObject("created_at", OffsetDateTime.class)
-                )
-        );
-    }
-
-    public void updateRole(final long userId, final Role role) {
-        jdbcTemplate.update("UPDATE app_users SET role = ? WHERE id = ?", role.name(), userId);
-    }
-
-    // Dibutuhin di listUsers()
-    public record UserSummary(long id, String username, String role, boolean disabled, java.time.OffsetDateTime createdAt) {}
 
     private static Long extractGeneratedId(final KeyHolder keyHolder) {
         final List<Map<String, Object>> keyList = keyHolder.getKeyList();
         if (keyList.isEmpty()) return null;
 
         final Map<String, Object> row = keyList.get(0);
+        Object idObj = row.containsKey("id") ? row.get("id") : row.get("ID");
+        if (idObj instanceof Number n) return n.longValue();
 
-        final Object idObj = row.containsKey("id") ? row.get("id") : row.get("ID");
-        final Long direct = toLong(idObj);
-        if (direct != null) return direct;
-
-        // fallback: first numeric value in the key map
         for (Object v : row.values()) {
-            final Long n = toLong(v);
-            if (n != null) return n;
+            if (v instanceof Number n2) return n2.longValue();
         }
-
         return null;
     }
 
-    private static Long toLong(final Object obj) {
-        if (obj instanceof Number n) return n.longValue();
-        return null;
+    // updateRole()
+    public void updateRole(final long userId, final Role role) {
+        jdbcTemplate.update("UPDATE app_users SET role = ? WHERE id = ?", role.name(), userId);
     }
+
+    public UserProfile getProfile(final long userId) {
+        final var rows = jdbcTemplate.query(
+                """
+                SELECT display_name, photo_url, shipping_address
+                FROM app_users
+                WHERE id = ?
+                """,
+                (rs, n) -> new UserProfile(
+                        rs.getString("display_name"),
+                        rs.getString("photo_url"),
+                        rs.getString("shipping_address")
+                ),
+                userId
+        );
+        return rows.isEmpty() ? new UserProfile(null, null, null) : rows.get(0);
+    }
+
+    public void updateProfile(final long userId, final UserProfile p) {
+        jdbcTemplate.update(
+                "UPDATE app_users SET display_name = ?, photo_url = ?, shipping_address = ? WHERE id = ?",
+                p.displayName(), p.photoUrl(), p.shippingAddress(), userId
+        );
+    }
+
+    public PublicProfile getPublicProfile(final long userId) {
+        final var rows = jdbcTemplate.query(
+                "SELECT id, username, display_name, photo_url, role FROM app_users WHERE id = ?",
+                (rs, n) -> new PublicProfile(
+                        rs.getLong("id"),
+                        rs.getString("username"),
+                        rs.getString("display_name"),
+                        rs.getString("photo_url"),
+                        rs.getString("role")
+                ),
+                userId
+        );
+        return rows.isEmpty() ? null : rows.get(0);
+    }
+
+    // list of users
+    public List<UserSummary> listUsers() {
+        return jdbcTemplate.query(
+                "SELECT id, username, role, is_disabled, created_at FROM app_users ORDER BY id",
+                (rs, n) -> new UserSummary(
+                        rs.getLong("id"),
+                        rs.getString("username"),
+                        rs.getString("role"),
+                        rs.getBoolean("is_disabled"),
+                        rs.getObject("created_at", java.time.OffsetDateTime.class)
+                )
+        );
+    }
+
+    public void updateRoleName(final long userId, final String roleName) {
+        jdbcTemplate.update("UPDATE app_users SET role = ? WHERE id = ?", roleName, userId);
+    }
+
+    public record UserProfile(String displayName, String photoUrl, String shippingAddress) {}
+    public record PublicProfile(long id, String username, String displayName, String photoUrl, String role) {}
+
+    // UserSummary
+    public record UserSummary(
+            long id,
+            String username,
+            String role,
+            boolean disabled,
+            java.time.OffsetDateTime createdAt
+    ) {}
 
     public void setDisabled(final long userId, final boolean disabled) {
         jdbcTemplate.update("UPDATE app_users SET is_disabled = ? WHERE id = ?", disabled, userId);
     }
 
-    public record UserRow(long id, String username, String passwordHash, Role role, boolean disabled) {}
+    public void setEmailVerified(final long userId, final boolean verified) {
+        jdbcTemplate.update("UPDATE app_users SET email_verified = ? WHERE id = ?", verified, userId);
+    }
+
+    public void setMfa(final long userId, final boolean enabled, final String method) {
+        jdbcTemplate.update("UPDATE app_users SET mfa_enabled = ?, mfa_method = ? WHERE id = ?", enabled, method, userId);
+    }
+
+    public record UserRow(
+            long id,
+            String username,
+            String passwordHash,
+            Role role,
+            boolean disabled,
+            boolean emailVerified,
+            boolean mfaEnabled,
+            String mfaMethod
+    ) {}
 }

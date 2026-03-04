@@ -2,6 +2,10 @@ package id.ac.ui.cs.advprog.backend.security;
 
 import id.ac.ui.cs.advprog.backend.auth.AuthPrincipal;
 import id.ac.ui.cs.advprog.backend.auth.SessionRepository;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
@@ -10,10 +14,6 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 
 /*
 Tanggung jawab: middleware stateless:
@@ -26,9 +26,7 @@ Tanggung jawab: middleware stateless:
 @Component
 public class TokenAuthFilter extends OncePerRequestFilter {
 
-    /** Legacy header used by the frontend starter code. */
     public static final String HEADER = "X-Auth-Token";
-
     private final SessionRepository sessionRepository;
 
     public TokenAuthFilter(final SessionRepository sessionRepository) {
@@ -41,18 +39,19 @@ public class TokenAuthFilter extends OncePerRequestFilter {
             final HttpServletResponse response,
             final FilterChain filterChain
     ) throws ServletException, IOException {
-        final var existingAuth = SecurityContextHolder.getContext().getAuthentication();
-        if (existingAuth == null) {
+
+        if (SecurityContextHolder.getContext().getAuthentication() == null) {
             TokenExtractor.extract(request).ifPresent(token -> {
                 sessionRepository.findActiveByAccessToken(token, Instant.now()).ifPresent(session -> {
-                    final var principal = new AuthPrincipal(session.userId(), session.username(), session.role());
+                    final String roleName = (session.role() == null || session.role().isBlank()) ? "BUYER" : session.role();
+                    final var principal = new AuthPrincipal(session.userId(), session.username(), roleName);
 
                     final List<SimpleGrantedAuthority> authorities = List.of(
-                            new SimpleGrantedAuthority("ROLE_" + session.role().name())
+                            new SimpleGrantedAuthority("ROLE_" + roleName)
                     );
 
                     final var auth = new UsernamePasswordAuthenticationToken(principal, null, authorities);
-                    auth.setDetails(token); // keep access token for logout / session management
+                    auth.setDetails(token);
                     SecurityContextHolder.getContext().setAuthentication(auth);
                 });
             });

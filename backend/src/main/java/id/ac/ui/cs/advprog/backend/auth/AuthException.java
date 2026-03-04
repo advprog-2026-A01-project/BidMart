@@ -18,13 +18,8 @@ public class AuthException extends RuntimeException {
         this.status = status;
     }
 
-    public String getCode() {
-        return code;
-    }
-
-    public HttpStatus getStatus() {
-        return status;
-    }
+    public String getCode() { return code; }
+    public HttpStatus getStatus() { return status; }
 
     public static AuthException invalidCredentials() {
         return new AuthException(HttpStatus.UNAUTHORIZED, "invalid_credentials");
@@ -38,11 +33,27 @@ public class AuthException extends RuntimeException {
         return new AuthException(HttpStatus.FORBIDDEN, "user_disabled");
     }
 
+    public static AuthException emailNotVerified() {
+        return new AuthException(HttpStatus.FORBIDDEN, "email_not_verified");
+    }
+
     public static AuthException refreshTokenInvalid() {
         return new AuthException(HttpStatus.UNAUTHORIZED, "invalid_refresh_token");
     }
 
     public static AuthException tooManySessions() {
         return new AuthException(HttpStatus.TOO_MANY_REQUESTS, "too_many_sessions");
+    }
+
+    public static AuthException invalidMfaChallenge() {
+        return new AuthException(HttpStatus.UNAUTHORIZED, "invalid_mfa_challenge");
+    }
+
+    public static AuthException invalidMfaCode() {
+        return new AuthException(HttpStatus.UNAUTHORIZED, "invalid_mfa_code");
+    }
+
+    public static AuthException mfaTooManyAttempts() {
+        return new AuthException(HttpStatus.TOO_MANY_REQUESTS, "mfa_too_many_attempts");
     }
 }
