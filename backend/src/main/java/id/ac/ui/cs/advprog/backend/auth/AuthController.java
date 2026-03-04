@@ -50,6 +50,7 @@ public class AuthController {
             return ResponseEntity.badRequest().body(err("invalid_role"));
         }
 
+        // Ada fungsinya di register() AuthService.java
         authService.register(username, password, role);
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("ok", true));
     }

@@ -55,6 +55,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
 
+                        // Hanya untuk ADMIN utk /api/admin
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
                         // DB ping public for healthcheck
                         .requestMatchers(HttpMethod.GET, "/api/db/ping").permitAll()
 

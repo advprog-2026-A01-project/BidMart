@@ -206,6 +206,15 @@ public class SessionRepository {
         );
     }
 
+    // Update SessionRepository.java untuk revoke semua sesi user
+    public int revokeAllByUserId(final long userId, final Instant now) {
+        return jdbcTemplate.update(
+                "UPDATE app_sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL",
+                odt(now),
+                userId
+        );
+    }
+
     public record AuthSession(long userId, String username, Role role) {}
 
     public record TokenPair(UUID accessToken, UUID refreshToken, Instant accessExpiresAt, Instant refreshExpiresAt) {}

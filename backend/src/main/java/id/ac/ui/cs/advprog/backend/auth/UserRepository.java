@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.backend.auth;
 
 import java.sql.PreparedStatement;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -60,6 +61,27 @@ public class UserRepository {
 
         throw new IllegalStateException("failed_to_insert_user");
     }
+
+    // Kumpulin semua list of users
+    public List<UserSummary> listUsers() {
+        return jdbcTemplate.query(
+                "SELECT id, username, role, is_disabled, created_at FROM app_users ORDER by id",
+                (rs, n) -> new UserSummary(
+                        rs.getLong("id"),
+                        rs.getString("username"),
+                        Role.fromDb(rs.getString("role")).name(),
+                        rs.getBoolean("is_disabled"),
+                        rs.getObject("created_at", OffsetDateTime.class)
+                )
+        );
+    }
+
+    public void updateRole(final long userId, final Role role) {
+        jdbcTemplate.update("UPDATE app_users SET role = ? WHERE id = ?", role.name(), userId);
+    }
+
+    // Dibutuhin di listUsers()
+    public record UserSummary(long id, String username, String role, boolean disabled, java.time.OffsetDateTime createdAt) {}
 
     private static Long extractGeneratedId(final KeyHolder keyHolder) {
         final List<Map<String, Object>> keyList = keyHolder.getKeyList();
