@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.backend.auth;
 
 import java.sql.PreparedStatement;
 import java.sql.Statement;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -45,7 +46,7 @@ public class UserRepository {
         jdbcTemplate.update(con -> {
             final PreparedStatement ps = con.prepareStatement(
                     "INSERT INTO app_users(username, password_hash, role) VALUES (?, ?, ?)",
-                    Statement.RETURN_GENERATED_KEYS
+                    new String[] { "id" }
             );
             ps.setString(1, username);
             ps.setString(2, passwordHash);
@@ -53,11 +54,21 @@ public class UserRepository {
             return ps;
         }, keyHolder);
 
-        final var key = keyHolder.getKey();
-        if (key == null) {
-            throw new IllegalStateException("failed_to_insert_user");
+        // 1) Prefer ambil dari map keys (aman kalau driver ngembaliin banyak kolom)
+        final Map<String, Object> keys = keyHolder.getKeys();
+        if (keys != null) {
+            final Object idObj = keys.get("id");
+            if (idObj instanceof Number n) {
+                return n.longValue();
+            }
         }
-        return key.longValue();
+        // 2) Fallback: single key (kalau memang cuman 1)
+        final Number key = keyHolder.getKey();
+        if (key != null) {
+            return key.longValue();
+        }
+
+        throw new IllegalStateException("failed_to_insert_user");
     }
 
     public void setDisabled(final long userId, final boolean disabled) {

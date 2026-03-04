@@ -20,17 +20,8 @@ public class AuthService {
     private final AuthProperties props;
     private final Clock clock;
 
-    public AuthService(
-            final UserRepository userRepository,
-            final SessionRepository sessionRepository,
-            final PasswordEncoder passwordEncoder,
-            final AuthProperties props
-    ) {
-        this(userRepository, sessionRepository, passwordEncoder, props, Clock.systemUTC());
-    }
-
     // visible for tests
-    AuthService(
+    public AuthService(
             final UserRepository userRepository,
             final SessionRepository sessionRepository,
             final PasswordEncoder passwordEncoder,
