@@ -1,4 +1,4 @@
-package id.ac.ui.cs.advprog.backend;
+package id.ac.ui.cs.advprog.backend.controller;
 
 import java.util.Map;
 
