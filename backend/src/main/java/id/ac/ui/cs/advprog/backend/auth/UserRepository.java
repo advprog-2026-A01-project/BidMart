@@ -9,6 +9,12 @@ import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
+/*
+Tanggung jawab: operasi DB untuk user.
+- findByUsername
+- insert
+- setDisabled (fondasi admin)
+*/
 @Repository
 public class UserRepository {
 

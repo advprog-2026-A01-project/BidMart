@@ -6,6 +6,21 @@ import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+/*
+Tanggung jawab: operasi DB untuk session/token.
+
+create token pair
+
+validate access token
+
+rotate refresh token
+
+revoke/logout
+
+limit concurrent sessions
+
+list sessions
+*/
 @Repository
 public class SessionRepository {
 

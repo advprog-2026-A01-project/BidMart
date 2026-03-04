@@ -1,5 +1,8 @@
 package id.ac.ui.cs.advprog.backend.auth;
 
+/*
+Tanggung jawab: definisi peran minimal yang stabil untuk semua modul.
+ */
 public enum Role {
     ADMIN,
     SELLER,
