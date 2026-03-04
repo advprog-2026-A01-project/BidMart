@@ -1,87 +1,50 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import './App.css'
+import { AuthProvider, useAuth } from './auth/AuthContext'
+import { AccountPanel } from './auth/AccountPanel'
 
-type MeResponse = { username: string }
-type PingResponse = { db: number }
-type LoginResponse = { token: string }
+function HomePage() {
+    const { user } = useAuth()
+    const [showAccount, setShowAccount] = useState(false)
+
+    return (
+        <div style={{ maxWidth: 980, margin: '0 auto', padding: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+                <div style={{ fontWeight: 800, fontSize: 18 }}>BidMart</div>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                    {user ? <span>Hi, <b>{user.username}</b> ({user.role})</span> : <span style={{ opacity: 0.8 }}>Guest</span>}
+                    <button onClick={() => setShowAccount(v => !v)}>{showAccount ? 'Close' : 'Account'}</button>
+                </div>
+            </div>
+
+            <div style={{ marginTop: 24 }}>
+                <h1 style={{ margin: 0 }}>Browse auctions</h1>
+                <p style={{ opacity: 0.8, marginTop: 8 }}>
+                    Browse listings without signing in. Sign in is required to bid, sell, and manage wallet.
+                </p>
+
+                <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', marginTop: 16 }}>
+                    <div style={card}>Popular item #1</div>
+                    <div style={card}>Popular item #2</div>
+                    <div style={card}>Popular item #3</div>
+                </div>
+            </div>
+
+            {showAccount && (
+                <div style={{ marginTop: 24 }}>
+                    <AccountPanel />
+                </div>
+            )}
+        </div>
+    )
+}
+
+const card: React.CSSProperties = { border: '1px solid #333', borderRadius: 12, padding: 14, minHeight: 90 }
 
 export default function App() {
-  const [username, setUsername] = useState('demo')
-  const [password, setPassword] = useState('demo')
-  const [log, setLog] = useState<string>('')
-
-  const token = useMemo(() => localStorage.getItem('authToken') ?? '', [])
-
-  async function register() {
-    setLog('registering...')
-    const res = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
-    })
-    setLog(res.ok ? 'register ok' : `register failed: ${res.status}`)
-  }
-
-  async function login() {
-    setLog('logging in...')
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
-    })
-    if (!res.ok) {
-      setLog(`login failed: ${res.status}`)
-      return
-    }
-    const data = (await res.json()) as LoginResponse
-    localStorage.setItem('authToken', data.token)
-    setLog(`login ok, token saved`)
-    window.location.reload()
-  }
-
-  async function me() {
-    setLog('calling /me...')
-    const res = await fetch('/api/auth/me', {
-      headers: { 'X-Auth-Token': localStorage.getItem('authToken') ?? '' },
-    })
-    if (!res.ok) {
-      setLog(`me failed: ${res.status}`)
-      return
-    }
-    const data = (await res.json()) as MeResponse
-    setLog(`me: ${data.username}`)
-  }
-
-  async function dbPing() {
-    setLog('calling /db/ping...')
-    const res = await fetch('/api/db/ping')
-    if (!res.ok) {
-      setLog(`db ping failed: ${res.status}`)
-      return
-    }
-    const data = (await res.json()) as PingResponse
-    setLog(`db ping ok: ${data.db}`)
-  }
-
-  return (
-    <div>
-      <h1>BidMart Auth (dummy)</h1>
-
-      <div style={{ display: 'grid', gap: 8, maxWidth: 360, margin: '0 auto' }}>
-        <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="username" />
-        <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="password" type="password" />
-
-        <button onClick={register}>Register</button>
-        <button onClick={login}>Login</button>
-
-        <hr />
-
-        <button onClick={me}>Who am I (/api/auth/me)</button>
-        <button onClick={dbPing}>DB Ping (/api/db/ping)</button>
-
-        <small>Current token: {token ? token.slice(0, 8) + '...' : '(none)'}</small>
-        <pre style={{ textAlign: 'left', whiteSpace: 'pre-wrap' }}>{log}</pre>
-      </div>
-    </div>
-  )
+    return (
+        <AuthProvider>
+            <HomePage />
+        </AuthProvider>
+    )
 }
