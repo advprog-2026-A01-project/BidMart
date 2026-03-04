@@ -5,19 +5,13 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /*
 Tanggung jawab: konfigurasi auth (TTL token, max session, policy).
  */
+@SuppressWarnings("PMD.DataClass")
 @ConfigurationProperties(prefix = "auth")
 public class AuthProperties {
 
-    /** Access token TTL in minutes (opaque UUID token stored in DB). */
     private int accessTtlMinutes = 60;
-
-    /** Refresh token TTL in days. */
     private int refreshTtlDays = 14;
-
-    /** Maximum active sessions per user. Set <=0 to disable the limit. */
     private int maxSessionsPerUser = 5;
-
-    /** What to do when max session is exceeded. */
     private SessionOverflowPolicy overflowPolicy = SessionOverflowPolicy.REVOKE_OLDEST;
 
     public int getAccessTtlMinutes() {

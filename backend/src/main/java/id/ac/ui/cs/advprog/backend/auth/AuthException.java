@@ -5,8 +5,9 @@ import org.springframework.http.HttpStatus;
 /*
 Tanggung jawab: error domain auth yang konsisten (code + status).
  */
-
 public class AuthException extends RuntimeException {
+
+    private static final long serialVersionUID = 1L;
 
     private final String code;
     private final HttpStatus status;

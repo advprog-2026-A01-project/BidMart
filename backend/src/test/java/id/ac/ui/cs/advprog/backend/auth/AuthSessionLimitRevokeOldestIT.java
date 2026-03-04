@@ -25,6 +25,10 @@ import org.springframework.test.web.servlet.MockMvc;
 })
 class AuthSessionLimitRevokeOldestIT {
 
+    private static final String AUTHZ = "Authorization";
+    private static final String BEARER = "Bearer ";
+    private static final String USER = "u_revoke";
+
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper om;
 
@@ -32,35 +36,36 @@ class AuthSessionLimitRevokeOldestIT {
     void second_login_revokes_oldest_session() throws Exception {
         mvc.perform(post("/api/auth/register")
                         .contentType(APPLICATION_JSON)
-                        .content(om.writeValueAsString(new Cred("u_revoke", "p"))))
+                        .content(om.writeValueAsString(new Cred(USER, "p"))))
                 .andExpect(status().isCreated());
 
-        String login1 = mvc.perform(post("/api/auth/login")
+        final String login1 = mvc.perform(post("/api/auth/login")
                         .contentType(APPLICATION_JSON)
-                        .content(om.writeValueAsString(new Cred("u_revoke", "p"))))
+                        .content(om.writeValueAsString(new Cred(USER, "p"))))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
-        String login2 = mvc.perform(post("/api/auth/login")
+        final String login2 = mvc.perform(post("/api/auth/login")
                         .contentType(APPLICATION_JSON)
-                        .content(om.writeValueAsString(new Cred("u_revoke", "p"))))
+                        .content(om.writeValueAsString(new Cred(USER, "p"))))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
-        JsonNode j1 = om.readTree(login1);
-        JsonNode j2 = om.readTree(login2);
-        String t1 = j1.get("accessToken").asText();
-        String t2 = j2.get("accessToken").asText();
+        final JsonNode j1 = om.readTree(login1);
+        final JsonNode j2 = om.readTree(login2);
+        final String t1 = j1.get("accessToken").asText();
+        final String t2 = j2.get("accessToken").asText();
+
+        assertThat(t1).isNotBlank();
+        assertThat(t2).isNotBlank();
         assertThat(t1).isNotEqualTo(t2);
 
-        // old token should be unauthorized
-        mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + t1))
+        mvc.perform(get("/api/auth/me").header(AUTHZ, BEARER + t1))
                 .andExpect(status().isUnauthorized());
 
-        // new token should work
-        mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + t2))
+        mvc.perform(get("/api/auth/me").header(AUTHZ, BEARER + t2))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.username").value("u_revoke"));
+                .andExpect(jsonPath("$.username").value(USER));
     }
 
     record Cred(String username, String password) {}

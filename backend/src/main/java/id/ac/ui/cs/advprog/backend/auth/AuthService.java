@@ -8,11 +8,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/*
-Tanggung jawab: aturan bisnis auth (register/login/refresh/logout + enforce session limit).
- */
 @Service
 public class AuthService {
+
+    public record ClientMeta(String userAgent, String ip) {}
 
     private final UserRepository userRepository;
     private final SessionRepository sessionRepository;
@@ -20,7 +19,8 @@ public class AuthService {
     private final AuthProperties props;
     private final Clock clock;
 
-    // visible for tests
+    private final AuthProperties.SessionOverflowPolicy overflowPolicy;
+
     public AuthService(
             final UserRepository userRepository,
             final SessionRepository sessionRepository,
@@ -33,6 +33,7 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
         this.props = props;
         this.clock = clock;
+        this.overflowPolicy = props.getOverflowPolicy();
     }
 
     @Transactional
@@ -48,8 +49,7 @@ public class AuthService {
     public SessionRepository.TokenPair login(
             final String username,
             final String password,
-            final String userAgent,
-            final String ip
+            final ClientMeta meta
     ) {
         final var user = userRepository.findByUsername(username)
                 .orElseThrow(AuthException::invalidCredentials);
@@ -74,23 +74,29 @@ public class AuthService {
                 now,
                 now.plus(accessTtl),
                 now.plus(refreshTtl),
-                userAgent,
-                ip
+                meta.userAgent(),
+                meta.ip()
         );
     }
 
     @Transactional
     public SessionRepository.TokenPair refresh(
             final String refreshToken,
-            final String userAgent,
-            final String ip
+            final ClientMeta meta
     ) {
         final Instant now = Instant.now(clock);
         final Duration accessTtl = Duration.ofMinutes(props.getAccessTtlMinutes());
         final Duration refreshTtl = Duration.ofDays(props.getRefreshTtlDays());
 
         return sessionRepository
-                .rotateByRefreshToken(refreshToken, now, now.plus(accessTtl), now.plus(refreshTtl), userAgent, ip)
+                .rotateByRefreshToken(
+                        refreshToken,
+                        now,
+                        now.plus(accessTtl),
+                        now.plus(refreshTtl),
+                        meta.userAgent(),
+                        meta.ip()
+                )
                 .orElseThrow(AuthException::refreshTokenInvalid);
     }
 
@@ -106,11 +112,10 @@ public class AuthService {
         final int active = sessionRepository.countActiveSessions(userId, now);
         if (active < max) return;
 
-        if (props.getOverflowPolicy() == AuthProperties.SessionOverflowPolicy.REJECT) {
+        if (overflowPolicy == AuthProperties.SessionOverflowPolicy.REJECT) {
             throw AuthException.tooManySessions();
         }
 
-        // revoke the oldest sessions so we have room for a new one
         sessionRepository.revokeOldestSessions(userId, (active - max) + 1, now);
     }
 }

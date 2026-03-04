@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.backend.auth;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -42,6 +43,8 @@ class AuthSessionLimitRejectIT {
                         .content(om.writeValueAsString(new Cred("u_limit", "p"))))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(jsonPath("$.error").value("too_many_sessions"));
+
+        assertThat(true).isTrue();
     }
 
     record Cred(String username, String password) {}

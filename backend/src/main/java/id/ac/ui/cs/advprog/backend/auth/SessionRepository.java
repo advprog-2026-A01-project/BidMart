@@ -1,4 +1,6 @@
 package id.ac.ui.cs.advprog.backend.auth;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 import java.time.Instant;
 import java.util.List;
@@ -46,10 +48,10 @@ public class SessionRepository {
             accessToken,
             refreshToken,
             userId,
-            now,
-            now,
-            accessExpiresAt,
-            refreshExpiresAt,
+            odt(now),
+            odt(now),
+            odt(accessExpiresAt),
+            odt(refreshExpiresAt),
             userAgent,
             ip
         );
@@ -81,12 +83,12 @@ public class SessionRepository {
                         Role.fromDb(rs.getString("role"))
                 ),
                 token,
-                now
+                odt(now)
         );
         if (rows.isEmpty()) return Optional.empty();
 
         // best-effort last-seen update
-        jdbcTemplate.update("UPDATE app_sessions SET last_seen_at = ? WHERE token = ?", now, token);
+        jdbcTemplate.update("UPDATE app_sessions SET last_seen_at = ? WHERE token = ?", odt(now), token);
 
         return Optional.of(rows.get(0));
     }
@@ -116,7 +118,7 @@ public class SessionRepository {
                 """,
                 (rs, n) -> rs.getLong("user_id"),
                 refreshToken,
-                now
+                odt(now)
         );
         if (userIds.isEmpty()) return Optional.empty();
 
@@ -135,7 +137,12 @@ public class SessionRepository {
         } catch (IllegalArgumentException e) {
             return;
         }
-        jdbcTemplate.update("UPDATE app_sessions SET revoked_at = ? WHERE token = ?", now, token);
+        jdbcTemplate.update("UPDATE app_sessions SET revoked_at = ? WHERE token = ?", odt(now), token);
+    }
+
+    // Fungsi helper untuk login pakai fungsi countActiveSessions()
+    private static OffsetDateTime odt(final Instant t) {
+        return OffsetDateTime.ofInstant(t, ZoneOffset.UTC);
     }
 
     public int countActiveSessions(final long userId, final Instant now) {
@@ -149,7 +156,7 @@ public class SessionRepository {
                 """,
                 Integer.class,
                 userId,
-                now
+                odt(now) // Ini yang diubah
         );
         return n == null ? 0 : n;
     }
@@ -173,7 +180,7 @@ public class SessionRepository {
 
         int revoked = 0;
         for (UUID t : tokens) {
-            revoked += jdbcTemplate.update("UPDATE app_sessions SET revoked_at = ? WHERE token = ?", now, t);
+            revoked += jdbcTemplate.update("UPDATE app_sessions SET revoked_at = ? WHERE token = ?", odt(now), t);
         }
         return revoked;
     }

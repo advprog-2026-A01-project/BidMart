@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Duration;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,12 +15,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/*
-Tanggung jawab: boundary HTTP (DTO, status code, mapping request/response).
- */
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
+
+    private static final String ERROR_KEY = "error";
 
     private final AuthService authService;
     private final SessionRepository sessionRepository;
@@ -39,7 +39,7 @@ public class AuthController {
     public ResponseEntity<?> register(@RequestBody final RegisterRequest body) {
         final String username = normalizeUsername(body.username());
         if (username.isBlank() || body.password() == null || body.password().isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "invalid_input"));
+            return ResponseEntity.badRequest().body(err("invalid_input"));
         }
         authService.register(username, body.password());
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("ok", true));
@@ -48,20 +48,24 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody final LoginRequest body, final HttpServletRequest request) {
         final String username = normalizeUsername(body.username());
-        final var tokenPair = authService.login(username, body.password(), request.getHeader("User-Agent"), request.getRemoteAddr());
+        final var meta = new AuthService.ClientMeta(request.getHeader("User-Agent"), request.getRemoteAddr());
+
+        final var tokenPair = authService.login(username, body.password(), meta);
         return ResponseEntity.ok(toTokenResponse(tokenPair));
     }
 
     @PostMapping("/refresh")
     public ResponseEntity<?> refresh(@RequestBody final RefreshRequest body, final HttpServletRequest request) {
-        final var tokenPair = authService.refresh(body.refreshToken(), request.getHeader("User-Agent"), request.getRemoteAddr());
+        final var meta = new AuthService.ClientMeta(request.getHeader("User-Agent"), request.getRemoteAddr());
+
+        final var tokenPair = authService.refresh(body.refreshToken(), meta);
         return ResponseEntity.ok(toTokenResponse(tokenPair));
     }
 
     @PostMapping("/logout")
     public ResponseEntity<?> logout(final Authentication authentication) {
         if (authentication == null || authentication.getDetails() == null) {
-            return ResponseEntity.status(401).body(Map.of("error", "unauthorized"));
+            return ResponseEntity.status(401).body(err("unauthorized"));
         }
         final String accessToken = String.valueOf(authentication.getDetails());
         authService.logout(accessToken);
@@ -71,7 +75,7 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<?> me(final Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof AuthPrincipal p)) {
-            return ResponseEntity.status(401).body(Map.of("error", "unauthorized"));
+            return ResponseEntity.status(401).body(err("unauthorized"));
         }
         return ResponseEntity.ok(new MeResponse(p.username(), p.role().name()));
     }
@@ -79,7 +83,7 @@ public class AuthController {
     @GetMapping("/sessions")
     public ResponseEntity<?> sessions(final Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof AuthPrincipal p)) {
-            return ResponseEntity.status(401).body(Map.of("error", "unauthorized"));
+            return ResponseEntity.status(401).body(err("unauthorized"));
         }
         final List<SessionRepository.SessionRow> sessions = sessionRepository.listSessions(p.userId());
         return ResponseEntity.ok(sessions);
@@ -96,7 +100,11 @@ public class AuthController {
     }
 
     private String normalizeUsername(final String username) {
-        return username == null ? "" : username.trim().toLowerCase();
+        return username == null ? "" : username.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static Map<String, String> err(final String code) {
+        return Map.of(ERROR_KEY, code);
     }
 
     public record RegisterRequest(
