@@ -6,10 +6,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
 /*
-
- */
-
-/*
 BackendApplication.java: Tanggung jawab: entrypoint Spring Boot + enable config AuthProperties.
 Skema DB Auth (fondasi yang stabil)
 Ada 2 tabel:
@@ -19,7 +15,6 @@ Ada 2 tabel:
 Ini penting: token disimpan di DB (opaque token),
 bukan JWT -- supaya logout/revoke bisa benar-benar mematikan token tanpa key sharing.
  */
-
 @SpringBootApplication
 @EnableConfigurationProperties(AuthProperties.class)
 public class BackendApplication {
@@ -29,5 +24,3 @@ public class BackendApplication {
     }
 
 }
-
-

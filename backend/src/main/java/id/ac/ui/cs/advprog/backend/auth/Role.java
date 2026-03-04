@@ -1,7 +1,7 @@
 package id.ac.ui.cs.advprog.backend.auth;
 
-/*
-Tanggung jawab: definisi peran minimal yang stabil untuk semua modul.
+/**
+ * Base roles (will be extended to dynamic roles/permissions in later milestones).
  */
 public enum Role {
     ADMIN,
@@ -13,9 +13,8 @@ public enum Role {
             return BUYER;
         try {
             return Role.valueOf(value);
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException ex) {
             return BUYER;
         }
     }
-
 }

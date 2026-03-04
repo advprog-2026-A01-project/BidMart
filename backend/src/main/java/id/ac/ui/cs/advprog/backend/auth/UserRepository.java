@@ -24,16 +24,17 @@ public class UserRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public Optional<UserRow> findByUsername(String username) {
-        var rows = jdbcTemplate.query(
-            "SELECT id, username, password_hash, role, is_disabled FROM app_users WHERE username = ?",
-            (rs, n) -> new UserRow(
-                    rs.getLong("id"),
-                    rs.getString("username"),
-                    Role.fromDb(rs.getString("role")),
-                    rs.getString("password_hash"),
-            ),
-            username
+    public Optional<UserRow> findByUsername(final String username) {
+        final var rows = jdbcTemplate.query(
+                "SELECT id, username, password_hash, role, is_disabled FROM app_users WHERE username = ?",
+                (rs, n) -> new UserRow(
+                        rs.getLong("id"),
+                        rs.getString("username"),
+                        rs.getString("password_hash"),
+                        Role.fromDb(rs.getString("role")),
+                        rs.getBoolean("is_disabled")
+                ),
+                username
         );
         return rows.stream().findFirst();
     }
@@ -56,7 +57,6 @@ public class UserRepository {
         if (key == null) {
             throw new IllegalStateException("failed_to_insert_user");
         }
-
         return key.longValue();
     }
 
@@ -64,7 +64,5 @@ public class UserRepository {
         jdbcTemplate.update("UPDATE app_users SET is_disabled = ? WHERE id = ?", disabled, userId);
     }
 
-    public record UserRow(long id, String username, String passwordHash, Role role, boolean disabled) {
-
-    }
+    public record UserRow(long id, String username, String passwordHash, Role role, boolean disabled) {}
 }

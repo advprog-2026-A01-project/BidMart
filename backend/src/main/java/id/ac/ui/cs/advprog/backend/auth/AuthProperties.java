@@ -8,10 +8,10 @@ Tanggung jawab: konfigurasi auth (TTL token, max session, policy).
 @ConfigurationProperties(prefix = "auth")
 public class AuthProperties {
 
-    // Access token TTL in minutes (opaque UUID token stored in DB)
+    /** Access token TTL in minutes (opaque UUID token stored in DB). */
     private int accessTtlMinutes = 60;
 
-    // Refresh token TTL in days
+    /** Refresh token TTL in days. */
     private int refreshTtlDays = 14;
 
     /** Maximum active sessions per user. Set <=0 to disable the limit. */
