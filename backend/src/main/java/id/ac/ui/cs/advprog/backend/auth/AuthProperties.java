@@ -2,6 +2,9 @@ package id.ac.ui.cs.advprog.backend.auth;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+/*
+Tanggung jawab: konfigurasi auth (TTL token, max session, policy).
+ */
 @ConfigurationProperties(prefix = "auth")
 public class AuthProperties {
 
