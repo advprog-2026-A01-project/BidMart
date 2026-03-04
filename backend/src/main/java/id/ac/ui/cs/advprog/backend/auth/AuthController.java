@@ -35,13 +35,22 @@ public class AuthController {
         this.props = props;
     }
 
+    // Registrasi ada masukin username, password, dan role
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody final RegisterRequest body) {
         final String username = normalizeUsername(body.username());
-        if (username.isBlank() || body.password() == null || body.password().isBlank()) {
+        final String password = body.password() == null ? "" : body.password();
+
+        if (username.isBlank() || password.isBlank()) {
             return ResponseEntity.badRequest().body(err("invalid_input"));
         }
-        authService.register(username, body.password());
+
+        final Role role = parseRequestedRole(body.requestedRole());
+        if (role == null) {
+            return ResponseEntity.badRequest().body(err("invalid_role"));
+        }
+
+        authService.register(username, password, role);
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("ok", true));
     }
 
@@ -107,10 +116,28 @@ public class AuthController {
         return Map.of(ERROR_KEY, code);
     }
 
+    /**
+     * Register role selection rules:
+     * - Allowed: BUYER, SELLER
+     * - Not allowed at self-register: ADMIN (must be assigned by admin)
+     */
+    private static Role parseRequestedRole(final String requestedRole) {
+        if (requestedRole == null || requestedRole.isBlank()) return Role.BUYER;
+
+        final String r = requestedRole.trim().toUpperCase(Locale.ROOT);
+        if ("BUYER".equals(r)) return Role.BUYER;
+        if ("SELLER".equals(r)) return Role.SELLER;
+
+        // ADMIN is blocked for self-register; others invalid
+        return null;
+    }
+
     public record RegisterRequest(
             @JsonAlias({"email"})
             String username,
-            String password
+            String password,
+            @JsonAlias({"role", "requestedRole"})
+            String requestedRole
     ) {}
 
     public record LoginRequest(

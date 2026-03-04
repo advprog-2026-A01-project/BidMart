@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,13 +42,21 @@ public class AuthService {
         this.overflowPolicy = props.getOverflowPolicy();
     }
 
+    // Fungsi register() untuk tambah user baru beserta password dan rolenya
     @Transactional
-    public void register(final String username, final String password) {
+    public void register(final String username, final String password, final Role role) {
         if (userRepository.findByUsername(username).isPresent()) {
             throw AuthException.usernameTaken();
         }
         final String hash = passwordEncoder.encode(password);
-        userRepository.insert(username, hash, Role.BUYER);
+
+        // enforce: never allow self-register as ADMIN
+        final Role safeRole = (role == null) ? Role.BUYER : role;
+        if (safeRole == Role.ADMIN) {
+            throw new AuthException(HttpStatus.BAD_REQUEST, "invalid_role");
+        }
+
+        userRepository.insert(username, hash, safeRole);
     }
 
     @Transactional
