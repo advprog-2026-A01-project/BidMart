@@ -7,22 +7,26 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+/*
+Tanggung jawab: mapping exception → response JSON stabil.
+ */
 @RestControllerAdvice
 public class AuthExceptionHandler {
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<?> handleIllegalArgument(IllegalArgumentException ex) {
-        if ("invalid_credentials".equals(ex.getMessage())) {
-            return ResponseEntity.status(401).body(Map.of("error", "invalid_credentials"));
-        }
-        if ("username_taken".equals(ex.getMessage())) {
-            return ResponseEntity.status(409).body(Map.of("error", "username_taken"));
-        }
-        return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+    @ExceptionHandler(AuthException.class)
+    public ResponseEntity<?> handleAuthException(final AuthException ex) {
+        return ResponseEntity.status(ex.getStatus()).body(Map.of("error", ex.getCode()));
     }
 
     @ExceptionHandler(DuplicateKeyException.class)
     public ResponseEntity<?> handleDuplicateKey() {
+        // keep error code stable for frontend
         return ResponseEntity.status(409).body(Map.of("error", "username_taken"));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<?> handleIllegalArgument(final IllegalArgumentException ex) {
+        // generic fallback (input validation, etc.)
+        return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
     }
 }
