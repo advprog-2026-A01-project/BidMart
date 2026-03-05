@@ -1,46 +1,14 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import * as AuthApi from '../api/auth'
 import { clearTokens, isAccessExpired, loadTokens, saveTokens, type StoredTokens } from './tokenStorage'
-
-type PendingMfa = {
-    challengeId: string
-    method: string
-    expiresIn: number
-    devCode?: string | null
-}
-
-type AuthState = {
-    tokens: StoredTokens | null
-    user: AuthApi.MeResponse | null
-    loading: boolean
-    error: string | null
-    lastVerificationToken: string | null
-    pendingMfa: PendingMfa | null
-}
-
-type AuthActions = {
-    register: (username: string, password: string, requestedRole?: 'BUYER' | 'SELLER') => Promise<void>
-    verifyEmail: (token: string) => Promise<void>
-    login: (username: string, password: string) => Promise<void>
-    submitMfa: (code: string) => Promise<void>
-    cancelMfa: () => void
-    enable2faEmail: () => Promise<void>
-    disable2fa: () => Promise<void>
-    becomeSeller: () => Promise<void>
-    logout: () => Promise<void>
-    refresh: () => Promise<void>
-    reloadMe: () => Promise<void>
-}
-
-type AuthContextValue = AuthState & AuthActions
-const AuthContext = createContext<AuthContextValue | null>(null)
+import { getStatus, normalizeError } from './error'
+import { AuthContext, type AuthContextValue, type PendingMfa } from './AuthContextStore'
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [tokens, setTokens] = useState<StoredTokens | null>(() => loadTokens())
     const [user, setUser] = useState<AuthApi.MeResponse | null>(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
-
     const [lastVerificationToken, setLastVerificationToken] = useState<string | null>(null)
     const [pendingMfa, setPendingMfa] = useState<PendingMfa | null>(null)
 
@@ -95,7 +63,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
             const res = await AuthApi.login(username, password)
 
-            // TS-friendly union narrowing
             if (!('accessToken' in res)) {
                 setPendingMfa({
                     challengeId: res.challengeId,
@@ -255,35 +222,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     )
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-}
-
-export function useAuth() {
-    const ctx = useContext(AuthContext)
-    if (!ctx) throw new Error('useAuth must be used within AuthProvider')
-    return ctx
-}
-
-function normalizeError(e: unknown): string {
-    const payloadError = getPayloadError(e)
-    if (payloadError) return payloadError
-    const status = getStatus(e)
-    if (status) return `http_${status}`
-    return 'unknown_error'
-}
-
-function getStatus(e: unknown): number | null {
-    if (typeof e !== 'object' || e === null) return null
-    const obj = e as Record<string, unknown>
-    const status = obj['status']
-    return typeof status === 'number' ? status : null
-}
-
-function getPayloadError(e: unknown): string | null {
-    if (typeof e !== 'object' || e === null) return null
-    const obj = e as Record<string, unknown>
-    const payload = obj['payload']
-    if (typeof payload !== 'object' || payload === null) return null
-    const p = payload as Record<string, unknown>
-    const err = p['error']
-    return typeof err === 'string' ? err : null
 }

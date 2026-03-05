@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
 import * as Api from '../api/auth'
-import { useAuth } from './AuthContext'
+import { useAuth } from './useAuth'
 
 type Tab = 'auth' | 'profile' | 'sessions' | 'admin'
 type AuthMode = 'login' | 'register'
@@ -368,7 +368,13 @@ export function AccountPanel() {
                             {authMode === 'register' ? (
                                 <label>
                                     Register as
-                                    <select value={requestedRole} onChange={(e) => setRequestedRole(e.target.value as any)}>
+                                    <select
+                                        value={requestedRole}
+                                        onChange={(e) => {
+                                            const v = e.target.value
+                                            setRequestedRole(v === 'SELLER' ? 'SELLER' : 'BUYER')
+                                        }}
+                                    >
                                         <option value="BUYER">Buyer</option>
                                         <option value="SELLER">Seller</option>
                                     </select>

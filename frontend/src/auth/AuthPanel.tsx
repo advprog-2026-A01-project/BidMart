@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { sessions as fetchSessions, type SessionRow } from '../api/auth'
-import { useAuth } from './AuthContext'
+import { useAuth } from './useAuth'
 
 export function AuthPanel() {
     const {
@@ -25,7 +25,6 @@ export function AuthPanel() {
 
     useEffect(() => {
         if (!tokens?.accessToken) {
-            setSessionRows(null)
             return
         }
         void (async () => {
@@ -110,7 +109,13 @@ export function AuthPanel() {
 
                     <label>
                         Register as
-                        <select value={requestedRole} onChange={(e) => setRequestedRole(e.target.value as any)}>
+                        <select
+                            value={requestedRole}
+                            onChange={(e) => {
+                                const v = e.target.value
+                                setRequestedRole(v === 'SELLER' ? 'SELLER' : 'BUYER')
+                            }}
+                        >
                             <option value="BUYER">Buyer</option>
                             <option value="SELLER">Seller</option>
                         </select>

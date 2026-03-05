@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import './App.css'
-import { AuthProvider, useAuth } from './auth/AuthContext'
+import { useAuth } from './auth/useAuth'
 import { AccountPanel } from './auth/AccountPanel'
+import { AuthProvider } from './auth/AuthContext'
 
 function HomePage() {
     const { user } = useAuth()

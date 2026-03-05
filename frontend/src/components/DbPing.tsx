@@ -14,7 +14,7 @@ export function DbPing() {
         try {
             const data = await apiFetch<PingResponse>('/api/db/ping')
             setLog(`db ping ok: ${data.db}`)
-        } catch (e: unknown) {
+        } catch {
             setLog('db ping failed')
         }
     }
