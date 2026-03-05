@@ -1,5 +1,8 @@
-package id.ac.ui.cs.advprog.backend.auth;
+package id.ac.ui.cs.advprog.backend.auth.api;
 
+import id.ac.ui.cs.advprog.backend.auth.model.AuthException;
+import id.ac.ui.cs.advprog.backend.auth.model.AuthPrincipal;
+import id.ac.ui.cs.advprog.backend.auth.repository.UserRepository;
 import id.ac.ui.cs.advprog.backend.security.RequiresPermission;
 import java.util.Map;
 import org.springframework.http.ResponseEntity;

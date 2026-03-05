@@ -1,7 +1,7 @@
 package id.ac.ui.cs.advprog.backend.security;
 
-import id.ac.ui.cs.advprog.backend.auth.AuthPrincipal;
-import id.ac.ui.cs.advprog.backend.auth.SessionRepository;
+import id.ac.ui.cs.advprog.backend.auth.model.AuthPrincipal;
+import id.ac.ui.cs.advprog.backend.auth.repository.SessionRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

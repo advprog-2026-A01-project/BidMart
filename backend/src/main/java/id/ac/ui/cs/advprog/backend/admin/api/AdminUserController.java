@@ -1,6 +1,11 @@
-package id.ac.ui.cs.advprog.backend.auth;
+package id.ac.ui.cs.advprog.backend.admin.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import id.ac.ui.cs.advprog.backend.auth.repository.OutboxRepository;
+import id.ac.ui.cs.advprog.backend.auth.repository.SessionRepository;
+import id.ac.ui.cs.advprog.backend.auth.repository.UserRepository;
+import id.ac.ui.cs.advprog.backend.auth.util.ClockHolder;
+import id.ac.ui.cs.advprog.backend.rbac.repository.RbacRepository;
 import id.ac.ui.cs.advprog.backend.security.RequiresPermission;
 import java.time.Instant;
 import java.util.Locale;
@@ -55,8 +60,13 @@ public class AdminUserController {
             return ResponseEntity.badRequest().body(err("role_not_found"));
         }
 
+        // 1) update role
         userRepository.updateRoleName(id, roleName);
 
+        // 2) IMPORTANT: invalidate all active sessions so user must re-login and get new role/permissions
+        sessionRepository.revokeAllByUserId(id, Instant.now(clockHolder.clock()));
+
+        // 3) publish event (for other modules / caches)
         final String payload = objectMapper.writeValueAsString(Map.of(
                 "userId", id,
                 "newRole", roleName

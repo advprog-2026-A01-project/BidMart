@@ -4,6 +4,7 @@ import * as Api from '../api/auth'
 import { useAuth } from './AuthContext'
 
 type Tab = 'auth' | 'profile' | 'sessions' | 'admin'
+type AuthMode = 'login' | 'register'
 
 export function AccountPanel() {
     const {
@@ -18,15 +19,17 @@ export function AccountPanel() {
     const isAdmin = user?.role === 'ADMIN'
 
     const [tab, setTab] = useState<Tab>('auth')
+    const [authMode, setAuthMode] = useState<AuthMode>('login')
 
     // Auth fields
     const [username, setUsername] = useState('demo')
     const [password, setPassword] = useState('demo')
     const [requestedRole, setRequestedRole] = useState<'BUYER' | 'SELLER'>('BUYER')
+
     const [verifyToken, setVerifyToken] = useState('')
     const [otp, setOtp] = useState('')
 
-    // NEW: TOTP UI state
+    // TOTP UI state (optional: if backend supports it)
     const [totpSecret, setTotpSecret] = useState<string | null>(null)
     const [totpUri, setTotpUri] = useState<string | null>(null)
     const [totpCode, setTotpCode] = useState('')
@@ -43,7 +46,7 @@ export function AccountPanel() {
     // Admin users
     const [adminUsers, setAdminUsers] = useState<Api.AdminUserRow[] | null>(null)
     const [adminMsg, setAdminMsg] = useState('')
-    const [roleInput, setRoleInput] = useState('')
+    const [roleDraftById, setRoleDraftById] = useState<Record<number, string>>({})
 
     // Admin RBAC
     const [roles, setRoles] = useState<string[]>([])
@@ -60,24 +63,27 @@ export function AccountPanel() {
         if (lastVerificationToken) setVerifyToken(lastVerificationToken)
     }, [lastVerificationToken])
 
-    // Helpers
     const canCall = !!accessToken
 
     async function onRegister() {
         await register(username, password, requestedRole)
+        // after register, usually you want to verify email
     }
+
     async function onVerifyEmail() {
         await verifyEmail(verifyToken)
     }
+
     async function onLogin() {
         await login(username, password)
     }
+
     async function onVerifyOtp() {
         await submitMfa(otp)
         setOtp('')
     }
 
-    // ===== NEW: TOTP handlers =====
+    // ===== TOTP handlers (optional) =====
     async function onTotpSetup() {
         if (!accessToken) return
         setMfaMsg('setting up TOTP...')
@@ -123,7 +129,6 @@ export function AccountPanel() {
             await navigator.clipboard.writeText(text)
             setMfaMsg('copied to clipboard')
         } catch {
-            // fallback: do nothing (some browsers block clipboard)
             setMfaMsg('copy failed (browser blocked clipboard)')
         }
     }
@@ -135,7 +140,7 @@ export function AccountPanel() {
             const p = await Api.getMyProfile(accessToken)
             setProfile(p)
             setProfileMsg('loaded')
-        } catch (e) {
+        } catch {
             setProfileMsg('failed')
         }
     }
@@ -201,13 +206,29 @@ export function AccountPanel() {
 
     async function adminSetRole(id: number) {
         if (!accessToken) return
-        const r = roleInput.trim()
-        if (!r) return
+
+        const currentRole = adminUsers?.find(u => u.id === id)?.role ?? ''
+        const desiredRole = (roleDraftById[id] ?? currentRole).trim()
+        if (!desiredRole) return
+
+        if (desiredRole === currentRole) {
+            setAdminMsg('no changes')
+            return
+        }
+
         setAdminMsg('updating role...')
         try {
-            await Api.adminSetUserRole(accessToken, id, r)
+            await Api.adminSetUserRole(accessToken, id, desiredRole)
+
+            // clear draft only for that user row
+            setRoleDraftById(prev => {
+                const next = { ...prev }
+                delete next[id]
+                return next
+            })
+
             await loadAdminUsers()
-            setAdminMsg('role updated')
+            setAdminMsg('role updated (user must re-login)')
         } catch {
             setAdminMsg('failed')
         }
@@ -275,7 +296,7 @@ export function AccountPanel() {
         }
     }
 
-    // When tab changes and logged in, auto load relevant data
+    // Auto-load per tab
     useEffect(() => {
         if (!accessToken) return
         if (tab === 'profile') void loadProfile()
@@ -298,6 +319,8 @@ export function AccountPanel() {
         return base.filter(t => t.show)
     }, [user, isAdmin])
 
+    const showVerifyBox = !!lastVerificationToken || !!verifyToken
+
     return (
         <div style={{ display: 'grid', gap: 12, maxWidth: 900, margin: '0 auto' }}>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -315,6 +338,23 @@ export function AccountPanel() {
                         <>
                             <h3 style={{ marginTop: 0 }}>Sign in / Register</h3>
 
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                                <button
+                                    onClick={() => setAuthMode('login')}
+                                    disabled={loading}
+                                    style={authMode === 'login' ? activeTab : tabBtn}
+                                >
+                                    Login
+                                </button>
+                                <button
+                                    onClick={() => setAuthMode('register')}
+                                    disabled={loading}
+                                    style={authMode === 'register' ? activeTab : tabBtn}
+                                >
+                                    Register
+                                </button>
+                            </div>
+
                             <label>
                                 Username / Email
                                 <input value={username} onChange={(e) => setUsername(e.target.value)} />
@@ -325,32 +365,46 @@ export function AccountPanel() {
                                 <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" />
                             </label>
 
-                            <label>
-                                Register as
-                                <select value={requestedRole} onChange={(e) => setRequestedRole(e.target.value as any)}>
-                                    <option value="BUYER">Buyer</option>
-                                    <option value="SELLER">Seller</option>
-                                </select>
-                            </label>
+                            {authMode === 'register' ? (
+                                <label>
+                                    Register as
+                                    <select value={requestedRole} onChange={(e) => setRequestedRole(e.target.value as any)}>
+                                        <option value="BUYER">Buyer</option>
+                                        <option value="SELLER">Seller</option>
+                                    </select>
+                                </label>
+                            ) : null}
 
                             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                <button onClick={() => void onRegister()} disabled={loading}>Register</button>
-                                <button onClick={() => void onLogin()} disabled={loading}>Login</button>
+                                {authMode === 'register' ? (
+                                    <button onClick={() => void onRegister()} disabled={loading}>Register</button>
+                                ) : (
+                                    <button onClick={() => void onLogin()} disabled={loading}>Login</button>
+                                )}
                             </div>
 
-                            <div style={subcard}>
-                                <div style={{ fontWeight: 700 }}>Email verification</div>
-                                {lastVerificationToken ? (
-                                    <div style={{ fontSize: 12, marginTop: 6 }}>
-                                        Token: <code>{lastVerificationToken}</code>
+                            {/* Email verification only shown when needed */}
+                            {showVerifyBox ? (
+                                <div style={subcard}>
+                                    <div style={{ fontWeight: 700 }}>Email verification</div>
+                                    {lastVerificationToken ? (
+                                        <div style={{ fontSize: 12, marginTop: 6 }}>
+                                            Token: <code>{lastVerificationToken}</code>
+                                        </div>
+                                    ) : null}
+                                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+                                        <input
+                                            value={verifyToken}
+                                            onChange={(e) => setVerifyToken(e.target.value)}
+                                            placeholder="paste token"
+                                            style={{ flex: '1 1 280px' }}
+                                        />
+                                        <button onClick={() => void onVerifyEmail()} disabled={loading || !verifyToken}>Verify</button>
                                     </div>
-                                ) : null}
-                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
-                                    <input value={verifyToken} onChange={(e) => setVerifyToken(e.target.value)} placeholder="paste token" style={{ flex: '1 1 280px' }} />
-                                    <button onClick={() => void onVerifyEmail()} disabled={loading || !verifyToken}>Verify</button>
                                 </div>
-                            </div>
+                            ) : null}
 
+                            {/* MFA challenge after login */}
                             {pendingMfa ? (
                                 <div style={subcard}>
                                     <div style={{ fontWeight: 700 }}>2FA required ({pendingMfa.method})</div>
@@ -401,14 +455,14 @@ export function AccountPanel() {
 
                                     {totpSecret ? (
                                         <div style={{ marginTop: 10, fontSize: 12 }}>
-                                            <div>Secret (manual entry): <code>{totpSecret}</code></div>
+                                            <div>Secret: <code>{totpSecret}</code></div>
                                             <div style={{ marginTop: 6 }}>
                                                 <button onClick={() => void copyToClipboard(totpSecret)} disabled={loading}>Copy Secret</button>
                                             </div>
 
                                             {totpUri ? (
                                                 <div style={{ marginTop: 10 }}>
-                                                    <div>otpauth URL (for QR generator):</div>
+                                                    <div>otpauth URL:</div>
                                                     <div style={{ wordBreak: 'break-all' }}><code>{totpUri}</code></div>
                                                     <div style={{ marginTop: 6 }}>
                                                         <button onClick={() => void copyToClipboard(totpUri)} disabled={loading}>Copy otpauth URL</button>
@@ -546,28 +600,44 @@ export function AccountPanel() {
                                     </tr>
                                     </thead>
                                     <tbody>
-                                    {adminUsers.map(u => (
-                                        <tr key={u.id}>
-                                            <td style={td}>{u.id}</td>
-                                            <td style={td}>{u.username}</td>
-                                            <td style={td}>{u.role}</td>
-                                            <td style={td}>{u.disabled ? 'yes' : 'no'}</td>
-                                            <td style={td}>
-                                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                                                    <input
-                                                        placeholder="role"
-                                                        value={roleInput}
-                                                        onChange={(e) => setRoleInput(e.target.value)}
-                                                        style={{ width: 120 }}
-                                                    />
-                                                    <button onClick={() => void adminSetRole(u.id)} disabled={loading}>Set role</button>
-                                                    <button onClick={() => void adminDisable(u.id, !u.disabled)} disabled={loading}>
-                                                        {u.disabled ? 'Enable' : 'Disable'}
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {adminUsers.map(u => {
+                                        const options = roles.length ? Array.from(new Set([...roles, u.role])) : [u.role]
+                                        const value = roleDraftById[u.id] ?? u.role
+
+                                        return (
+                                            <tr key={u.id}>
+                                                <td style={td}>{u.id}</td>
+                                                <td style={td}>{u.username}</td>
+                                                <td style={td}>{u.role}</td>
+                                                <td style={td}>{u.disabled ? 'yes' : 'no'}</td>
+                                                <td style={td}>
+                                                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                                                        {roles.length ? (
+                                                            <select
+                                                                value={value}
+                                                                onChange={(e) => setRoleDraftById(prev => ({ ...prev, [u.id]: e.target.value }))}
+                                                                style={{ width: 140 }}
+                                                            >
+                                                                {options.map(r => <option key={r} value={r}>{r}</option>)}
+                                                            </select>
+                                                        ) : (
+                                                            <input
+                                                                placeholder={`Current: ${u.role}`}
+                                                                value={roleDraftById[u.id] ?? ''}
+                                                                onChange={(e) => setRoleDraftById(prev => ({ ...prev, [u.id]: e.target.value }))}
+                                                                style={{ width: 140 }}
+                                                            />
+                                                        )}
+
+                                                        <button onClick={() => void adminSetRole(u.id)} disabled={loading}>Set role</button>
+                                                        <button onClick={() => void adminDisable(u.id, !u.disabled)} disabled={loading}>
+                                                            {u.disabled ? 'Enable' : 'Disable'}
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )
+                                    })}
                                     </tbody>
                                 </table>
                             </div>
@@ -624,9 +694,7 @@ export function AccountPanel() {
                                                 <input
                                                     type="checkbox"
                                                     checked={checked}
-                                                    onChange={() => {
-                                                        setSelectedRolePerms(prev => checked ? prev.filter(x => x !== p.key) : [...prev, p.key])
-                                                    }}
+                                                    onChange={() => setSelectedRolePerms(prev => checked ? prev.filter(x => x !== p.key) : [...prev, p.key])}
                                                 />
                                                 <span><code>{p.key}</code> <span style={{ opacity: 0.7 }}>{p.description ?? ''}</span></span>
                                             </label>
@@ -675,6 +743,7 @@ const activeTab: CSSProperties = {
     borderColor: 'var(--ebay-blue)',
     background: 'rgba(8, 106, 244, 0.08)',
 }
+
 const th: CSSProperties = { borderBottom: '1px solid #ccc', padding: 6, textAlign: 'left' }
 const td: CSSProperties = { borderBottom: '1px solid #eee', padding: 6, verticalAlign: 'top' }
 

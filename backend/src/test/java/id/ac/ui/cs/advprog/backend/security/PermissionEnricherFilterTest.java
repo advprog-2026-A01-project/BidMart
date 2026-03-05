@@ -5,8 +5,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import id.ac.ui.cs.advprog.backend.auth.AuthPrincipal;
-import id.ac.ui.cs.advprog.backend.auth.RbacRepository;
+import id.ac.ui.cs.advprog.backend.auth.model.AuthPrincipal;
+import id.ac.ui.cs.advprog.backend.rbac.repository.RbacRepository;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;

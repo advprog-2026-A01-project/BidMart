@@ -1,10 +1,11 @@
-package id.ac.ui.cs.advprog.backend.auth;
+package id.ac.ui.cs.advprog.backend.auth.repository;
 
 import java.sql.PreparedStatement;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import id.ac.ui.cs.advprog.backend.auth.model.Role;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;

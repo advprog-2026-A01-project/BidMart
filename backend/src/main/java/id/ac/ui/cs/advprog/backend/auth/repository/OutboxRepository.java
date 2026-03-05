@@ -1,4 +1,4 @@
-package id.ac.ui.cs.advprog.backend.auth;
+package id.ac.ui.cs.advprog.backend.auth.repository;
 
 import java.time.Instant;
 import java.time.OffsetDateTime;

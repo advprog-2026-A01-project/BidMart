@@ -1,7 +1,10 @@
-package id.ac.ui.cs.advprog.backend.auth;
+package id.ac.ui.cs.advprog.backend.auth.api;
 
 import java.util.Locale;
 import java.util.Map;
+
+import id.ac.ui.cs.advprog.backend.auth.model.AuthPrincipal;
+import id.ac.ui.cs.advprog.backend.auth.repository.UserRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;

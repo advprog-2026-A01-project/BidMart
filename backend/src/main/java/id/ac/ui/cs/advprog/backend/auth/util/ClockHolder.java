@@ -1,4 +1,4 @@
-package id.ac.ui.cs.advprog.backend.auth;
+package id.ac.ui.cs.advprog.backend.auth.util;
 
 import java.time.Clock;
 import org.springframework.stereotype.Component;

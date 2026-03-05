@@ -1,4 +1,4 @@
-package id.ac.ui.cs.advprog.backend.auth;
+package id.ac.ui.cs.advprog.backend.auth.model;
 
 /*
 Tanggung jawab: representasi identitas user immutable di SecurityContext.

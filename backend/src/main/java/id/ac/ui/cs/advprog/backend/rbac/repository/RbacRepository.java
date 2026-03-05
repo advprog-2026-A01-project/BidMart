@@ -1,4 +1,4 @@
-package id.ac.ui.cs.advprog.backend.auth;
+package id.ac.ui.cs.advprog.backend.rbac.repository;
 
 import java.util.List;
 import org.springframework.jdbc.core.JdbcTemplate;

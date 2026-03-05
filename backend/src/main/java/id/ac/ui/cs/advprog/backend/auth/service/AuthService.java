@@ -1,4 +1,4 @@
-package id.ac.ui.cs.advprog.backend.auth;
+package id.ac.ui.cs.advprog.backend.auth.service;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -6,6 +6,14 @@ import java.time.Instant;
 import java.util.Locale;
 import java.util.UUID;
 
+import id.ac.ui.cs.advprog.backend.auth.model.AuthException;
+import id.ac.ui.cs.advprog.backend.auth.model.AuthProperties;
+import id.ac.ui.cs.advprog.backend.auth.model.Role;
+import id.ac.ui.cs.advprog.backend.auth.repository.EmailVerificationRepository;
+import id.ac.ui.cs.advprog.backend.auth.repository.MfaChallengeRepository;
+import id.ac.ui.cs.advprog.backend.auth.repository.SessionRepository;
+import id.ac.ui.cs.advprog.backend.auth.repository.UserRepository;
+import id.ac.ui.cs.advprog.backend.auth.util.TotpUtil;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;

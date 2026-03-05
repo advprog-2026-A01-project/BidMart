@@ -1,7 +1,8 @@
-package id.ac.ui.cs.advprog.backend.auth;
+package id.ac.ui.cs.advprog.backend.auth.api;
 
 import java.util.Map;
 
+import id.ac.ui.cs.advprog.backend.auth.model.AuthException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
