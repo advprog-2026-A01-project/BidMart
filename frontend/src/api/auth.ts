@@ -53,6 +53,13 @@ export type AdminUserRow = {
 
 export type PermissionRow = { key: string; description: string | null }
 
+/* ===== NEW: TOTP ===== */
+export type TotpSetupResponse = {
+    ok: boolean
+    secret: string
+    otpauthUrl: string
+}
+
 export async function register(username: string, password: string, requestedRole?: 'BUYER' | 'SELLER'): Promise<RegisterResponse> {
     return apiFetch('/api/auth/register', {
         method: 'POST',
@@ -91,6 +98,24 @@ export async function enable2faEmail(accessToken: string): Promise<{ ok: boolean
 
 export async function disable2fa(accessToken: string): Promise<{ ok: boolean }> {
     return apiFetch('/api/auth/2fa/disable', { method: 'POST', accessToken })
+}
+
+/* ===== NEW: TOTP endpoints ===== */
+export async function totpSetup(accessToken: string): Promise<TotpSetupResponse> {
+    return apiFetch('/api/auth/2fa/totp/setup', { method: 'POST', accessToken })
+}
+
+export async function totpEnable(accessToken: string, code: string): Promise<{ ok: boolean }> {
+    return apiFetch('/api/auth/2fa/totp/enable', {
+        method: 'POST',
+        accessToken,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+    })
+}
+
+export async function totpDisable(accessToken: string): Promise<{ ok: boolean }> {
+    return apiFetch('/api/auth/2fa/totp/disable', { method: 'POST', accessToken })
 }
 
 export async function refresh(refreshToken: string): Promise<TokenResponse> {

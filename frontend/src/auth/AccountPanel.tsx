@@ -26,6 +26,12 @@ export function AccountPanel() {
     const [verifyToken, setVerifyToken] = useState('')
     const [otp, setOtp] = useState('')
 
+    // NEW: TOTP UI state
+    const [totpSecret, setTotpSecret] = useState<string | null>(null)
+    const [totpUri, setTotpUri] = useState<string | null>(null)
+    const [totpCode, setTotpCode] = useState('')
+    const [mfaMsg, setMfaMsg] = useState('')
+
     // Profile fields
     const [profile, setProfile] = useState<Api.UserProfile>({ displayName: null, photoUrl: null, shippingAddress: null })
     const [profileMsg, setProfileMsg] = useState('')
@@ -69,6 +75,57 @@ export function AccountPanel() {
     async function onVerifyOtp() {
         await submitMfa(otp)
         setOtp('')
+    }
+
+    // ===== NEW: TOTP handlers =====
+    async function onTotpSetup() {
+        if (!accessToken) return
+        setMfaMsg('setting up TOTP...')
+        try {
+            const res = await Api.totpSetup(accessToken)
+            setTotpSecret(res.secret)
+            setTotpUri(res.otpauthUrl)
+            setMfaMsg('TOTP secret generated. Add it to your authenticator app, then enter a code to enable.')
+        } catch {
+            setMfaMsg('failed to setup TOTP')
+        }
+    }
+
+    async function onTotpEnable() {
+        if (!accessToken) return
+        if (!totpCode.trim()) return
+        setMfaMsg('enabling TOTP...')
+        try {
+            await Api.totpEnable(accessToken, totpCode.trim())
+            setTotpCode('')
+            setMfaMsg('TOTP enabled. Next login will require authenticator code.')
+        } catch {
+            setMfaMsg('failed to enable TOTP (code might be wrong)')
+        }
+    }
+
+    async function onTotpDisable() {
+        if (!accessToken) return
+        setMfaMsg('disabling TOTP...')
+        try {
+            await Api.totpDisable(accessToken)
+            setTotpSecret(null)
+            setTotpUri(null)
+            setTotpCode('')
+            setMfaMsg('TOTP disabled (secret cleared).')
+        } catch {
+            setMfaMsg('failed to disable TOTP')
+        }
+    }
+
+    async function copyToClipboard(text: string) {
+        try {
+            await navigator.clipboard.writeText(text)
+            setMfaMsg('copied to clipboard')
+        } catch {
+            // fallback: do nothing (some browsers block clipboard)
+            setMfaMsg('copy failed (browser blocked clipboard)')
+        }
     }
 
     async function loadProfile() {
@@ -315,7 +372,7 @@ export function AccountPanel() {
                             <h3 style={{ marginTop: 0 }}>Account</h3>
                             <div>Logged in as <b>{user.username}</b> ({user.role})</div>
 
-                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
                                 <button onClick={() => void refresh()} disabled={loading}>Refresh token</button>
                                 <button onClick={() => void logout()} disabled={loading}>Logout</button>
                                 {user.role === 'BUYER' && (
@@ -323,9 +380,66 @@ export function AccountPanel() {
                                 )}
                             </div>
 
-                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                <button onClick={() => void enable2faEmail()} disabled={loading}>Enable 2FA (Email)</button>
-                                <button onClick={() => void disable2fa()} disabled={loading}>Disable 2FA</button>
+                            <div style={subcard}>
+                                <div style={{ fontWeight: 800 }}>2FA / MFA</div>
+                                <div style={{ fontSize: 12, opacity: 0.85, marginTop: 4 }}>
+                                    You can switch 2FA method anytime: enable Email OTP or enable TOTP. Login will require the active method.
+                                </div>
+
+                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+                                    <button onClick={() => void enable2faEmail()} disabled={loading}>Enable 2FA (Email OTP)</button>
+                                    <button onClick={() => void disable2fa()} disabled={loading}>Disable 2FA</button>
+                                </div>
+
+                                <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+                                    <div style={{ fontWeight: 700 }}>TOTP (Authenticator App)</div>
+
+                                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+                                        <button onClick={() => void onTotpSetup()} disabled={loading || !canCall}>Setup / Regenerate Secret</button>
+                                        <button onClick={() => void onTotpDisable()} disabled={loading || !canCall}>Disable TOTP (Clear Secret)</button>
+                                    </div>
+
+                                    {totpSecret ? (
+                                        <div style={{ marginTop: 10, fontSize: 12 }}>
+                                            <div>Secret (manual entry): <code>{totpSecret}</code></div>
+                                            <div style={{ marginTop: 6 }}>
+                                                <button onClick={() => void copyToClipboard(totpSecret)} disabled={loading}>Copy Secret</button>
+                                            </div>
+
+                                            {totpUri ? (
+                                                <div style={{ marginTop: 10 }}>
+                                                    <div>otpauth URL (for QR generator):</div>
+                                                    <div style={{ wordBreak: 'break-all' }}><code>{totpUri}</code></div>
+                                                    <div style={{ marginTop: 6 }}>
+                                                        <button onClick={() => void copyToClipboard(totpUri)} disabled={loading}>Copy otpauth URL</button>
+                                                    </div>
+                                                </div>
+                                            ) : null}
+
+                                            <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                                <input
+                                                    value={totpCode}
+                                                    onChange={(e) => setTotpCode(e.target.value)}
+                                                    placeholder="Enter current code (e.g. 123456)"
+                                                    style={{ flex: '1 1 220px' }}
+                                                />
+                                                <button onClick={() => void onTotpEnable()} disabled={loading || !totpCode.trim()}>
+                                                    Enable TOTP
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div style={{ marginTop: 8, fontSize: 12, opacity: 0.85 }}>
+                                            Click <b>Setup</b> to generate a secret, add it to your authenticator app, then enter a code to enable.
+                                        </div>
+                                    )}
+                                </div>
+
+                                {mfaMsg ? (
+                                    <div style={{ marginTop: 10, fontSize: 12, opacity: 0.9 }}>
+                                        {mfaMsg}
+                                    </div>
+                                ) : null}
                             </div>
                         </>
                     )}
