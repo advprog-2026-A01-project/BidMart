@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
 import * as Api from '../api/auth'
 import { useAuth } from './useAuth'
+import './AccountPanel.css'
 
 type Tab = 'auth' | 'profile' | 'sessions' | 'admin'
 type AuthMode = 'login' | 'register'
@@ -38,6 +39,7 @@ export function AccountPanel() {
     // Profile fields
     const [profile, setProfile] = useState<Api.UserProfile>({ displayName: null, photoUrl: null, shippingAddress: null })
     const [profileMsg, setProfileMsg] = useState('')
+    const [photoOk, setPhotoOk] = useState(true)
 
     // Sessions
     const [sessions, setSessions] = useState<Api.SessionRow[] | null>(null)
@@ -155,6 +157,11 @@ export function AccountPanel() {
             setProfileMsg('failed')
         }
     }
+
+    // Live preview should re-attempt loading when URL changes
+    useEffect(() => {
+        setPhotoOk(true)
+    }, [profile.photoUrl])
 
     async function loadSessions() {
         if (!accessToken) return
@@ -514,24 +521,63 @@ export function AccountPanel() {
             {tab === 'profile' && user && (
                 <div style={card}>
                     <h3 style={{ marginTop: 0 }}>Profile</h3>
-                    <div style={{ display: 'grid', gap: 10 }}>
-                        <label>
-                            Display name
-                            <input value={profile.displayName ?? ''} onChange={(e) => setProfile({ ...profile, displayName: e.target.value || null })} />
-                        </label>
-                        <label>
-                            Photo URL
-                            <input value={profile.photoUrl ?? ''} onChange={(e) => setProfile({ ...profile, photoUrl: e.target.value || null })} />
-                        </label>
-                        <label>
-                            Shipping address
-                            <textarea value={profile.shippingAddress ?? ''} onChange={(e) => setProfile({ ...profile, shippingAddress: e.target.value || null })} />
-                        </label>
 
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                            <button onClick={() => void loadProfile()} disabled={!canCall || loading}>Reload</button>
-                            <button onClick={() => void saveProfile()} disabled={!canCall || loading}>Save</button>
-                            <span style={{ fontSize: 12, opacity: 0.8 }}>{profileMsg}</span>
+                    <div className="ap-profileGrid">
+                        <div className="ap-previewCard">
+                            <div className="ap-avatarLg" aria-label="Profile photo preview">
+                                {profile.photoUrl && photoOk ? (
+                                    <img
+                                        src={profile.photoUrl}
+                                        alt="Profile"
+                                        referrerPolicy="no-referrer"
+                                        onError={() => setPhotoOk(false)}
+                                    />
+                                ) : (
+                                    <span aria-hidden="true">{initials(profile.displayName ?? user.username)}</span>
+                                )}
+                            </div>
+
+                            <div className="ap-previewText">
+                                <div className="ap-previewName">{profile.displayName?.trim() || user.username}</div>
+                                <div className="ap-previewMeta">{user.username} · {user.role}</div>
+                                <div className="ap-previewHint">
+                                    Paste a photo URL to preview instantly. If the URL is invalid or blocked, the avatar falls back to your initials.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="ap-profileForm">
+                            <label>
+                                Display name
+                                <input
+                                    value={profile.displayName ?? ''}
+                                    onChange={(e) => setProfile({ ...profile, displayName: e.target.value || null })}
+                                />
+                            </label>
+
+                            <label>
+                                Photo URL
+                                <input
+                                    value={profile.photoUrl ?? ''}
+                                    onChange={(e) => setProfile({ ...profile, photoUrl: e.target.value || null })}
+                                    placeholder="https://..."
+                                    inputMode="url"
+                                />
+                            </label>
+
+                            <label>
+                                Shipping address
+                                <textarea
+                                    value={profile.shippingAddress ?? ''}
+                                    onChange={(e) => setProfile({ ...profile, shippingAddress: e.target.value || null })}
+                                />
+                            </label>
+
+                            <div className="ap-actions">
+                                <button onClick={() => void loadProfile()} disabled={!canCall || loading}>Reload</button>
+                                <button onClick={() => void saveProfile()} disabled={!canCall || loading}>Save</button>
+                                <span style={{ fontSize: 12, opacity: 0.8 }}>{profileMsg}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -757,4 +803,14 @@ function fmt(iso: string) {
     const d = new Date(iso)
     if (Number.isNaN(d.getTime())) return iso
     return d.toLocaleString()
+}
+
+function initials(name: string) {
+    const parts = name
+        .trim()
+        .split(/\s+/g)
+        .filter(Boolean)
+        .slice(0, 2)
+    const s = parts.map(p => p[0]?.toUpperCase() ?? '').join('')
+    return s || 'U'
 }

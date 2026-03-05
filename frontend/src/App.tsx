@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
 import { useAuth } from './auth/useAuth'
 import { AccountPanel } from './auth/AccountPanel'
@@ -9,12 +9,26 @@ function HomePage() {
     const [showAccount, setShowAccount] = useState(false)
     const [q, setQ] = useState('')
 
+    // Better UX: close modal on ESC
+    useEffect(() => {
+        if (!showAccount) return
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setShowAccount(false)
+        }
+        window.addEventListener('keydown', onKeyDown)
+        return () => window.removeEventListener('keydown', onKeyDown)
+    }, [showAccount])
+
+    const who = user ? user.username : 'Guest'
+    const whoInitial = (who.trim()[0] ?? 'G').toUpperCase()
+
     return (
         <>
             <header className="bm-header">
                 <div className="container bm-header__inner">
                     <a className="bm-logo" href="#" aria-label="BidMart">
                         <span className="c1">B</span><span className="c2">i</span><span className="c3">d</span><span className="c4">Mart</span>
+                        <span className="bm-logoBadge" aria-label="Version A01">A01</span>
                     </a>
 
                     <div className="bm-search" role="search">
@@ -30,6 +44,7 @@ function HomePage() {
                     </div>
 
                     <div className="bm-user">
+                        <span className="bm-avatar" aria-hidden="true">{whoInitial}</span>
                         <span className="bm-pill">
                             {user ? (
                                 <>Hi, <b>{user.username}</b> <span className="bm-muted">({user.role})</span></>
@@ -37,7 +52,7 @@ function HomePage() {
                                 <span className="bm-muted">Guest</span>
                             )}
                         </span>
-                        <button onClick={() => setShowAccount(true)} aria-haspopup="dialog">
+                        <button className="bm-btnGhost" onClick={() => setShowAccount(true)} aria-haspopup="dialog">
                             Account
                         </button>
                     </div>
@@ -84,11 +99,20 @@ function HomePage() {
             </main>
 
             {showAccount && (
-                <div className="bm-overlay" role="dialog" aria-modal="true" aria-label="Account">
+                <div
+                    className="bm-overlay"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Account"
+                    // Better UX: close when clicking outside the modal
+                    onMouseDown={(e) => {
+                        if (e.target === e.currentTarget) setShowAccount(false)
+                    }}
+                >
                     <div className="bm-modal">
                         <div className="bm-modalHeader">
                             <h2>Account</h2>
-                            <button onClick={() => setShowAccount(false)} aria-label="Close account dialog">
+                            <button className="bm-btnGhost" onClick={() => setShowAccount(false)} aria-label="Close account dialog">
                                 Close
                             </button>
                         </div>

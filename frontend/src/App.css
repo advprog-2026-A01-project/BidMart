@@ -37,6 +37,18 @@
   color: var(--text);
 }
 
+.bm-logoBadge {
+  margin-left: 8px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  font-weight: 800;
+  color: var(--muted);
+}
+
 .bm-logo .c1 { color: var(--ebay-red); }
 .bm-logo .c2 { color: var(--ebay-blue); }
 .bm-logo .c3 { color: var(--ebay-yellow); }
@@ -71,6 +83,23 @@
   gap: 10px;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+.bm-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  color: var(--ebay-blue);
+  user-select: none;
+}
+
+.bm-btnGhost {
+  background: #fff;
 }
 
 .bm-pill {
@@ -216,5 +245,25 @@
   .bm-user {
     width: 100%;
     justify-content: space-between;
+  }
+}
+
+@media (max-width: 560px) {
+  .bm-modal {
+    width: 100%;
+    max-height: 94vh;
+    border-radius: 16px;
+  }
+
+  .bm-modalBody {
+    padding: 12px;
+  }
+
+  .bm-logo {
+    font-size: 20px;
+  }
+
+  .bm-search input {
+    padding: 10px 12px;
   }
 }
