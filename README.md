@@ -1,10 +1,10 @@
 # BidMart A01
 
 > **IMPORTANT (DO NOT BREAK CI)**
-> - **JANGAN merusak/ubah logic backend** yang bisa mempengaruhi **PMD** dan **testing**.
+> - **JANGAN ngerusak/ubah logic backend** yang bisa mempengaruhi **PMD** dan **testing**.
 > - Patch yang dibahas di chat ini fokus ke **UI/UX + responsive (frontend)**.
 > - Nama aplikasi: **BidMart A01**.
-> - Semua credentials di README ini untuk **dev/local only**.
+> - Semua credentials di README ini untuk **dev/local aja**.
 
 ---
 
@@ -337,7 +337,7 @@ curl -sS -X POST http://localhost:8080/api/auth/2fa/totp/setup \
 
 # ADMIN SETUP (PROMOTE FIRST ADMIN)
 
-> Register biasa tidak membuat ADMIN. Cara paling cepat: promote lewat SQL.
+> Register biasa tidak membuat ADMIN. Cara paling cepat: tambah ADMIN lewat SQL.
 
 ## Option A — psql from host
 ```bash
