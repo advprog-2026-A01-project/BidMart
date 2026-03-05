@@ -5,11 +5,14 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class ClockHolder {
-    private final Clock clock;
+
+    private final Clock clockValue;
+
     public ClockHolder(final Clock clock) {
-        this.clock = clock;
+        this.clockValue = clock;
     }
+
     public Clock clock() {
-        return clock;
+        return this.clockValue;
     }
 }

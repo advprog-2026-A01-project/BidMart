@@ -37,7 +37,7 @@ class AuthSessionLimitRejectIT {
         final String verifyToken = om.readTree(regBody).get("verificationToken").asText();
         mvc.perform(post("/api/auth/verify-email")
                         .contentType(APPLICATION_JSON)
-                        .content("{\"token\":\"" + verifyToken + "\"}"))
+                        .content(om.writeValueAsString(java.util.Map.of("token", verifyToken))))
                 .andExpect(status().isOk());
 
         mvc.perform(post("/api/auth/login")

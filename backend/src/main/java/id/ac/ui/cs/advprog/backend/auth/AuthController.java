@@ -13,9 +13,13 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
+@SuppressWarnings({
+        "PMD.TooManyMethods"
+})
 public class AuthController {
 
     private static final String ERROR_KEY = "error";
+    private static final String ERROR_UNAUTHORIZED = "unauthorized";
 
     private final AuthService authService;
     private final SessionRepository sessionRepository;
@@ -89,7 +93,7 @@ public class AuthController {
     @PostMapping("/2fa/enable-email")
     public ResponseEntity<?> enableEmailMfa(final Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof AuthPrincipal p)) {
-            return ResponseEntity.status(401).body(err("unauthorized"));
+            return ResponseEntity.status(401).body(err(ERROR_UNAUTHORIZED));
         }
         authService.enableEmailMfa(p.userId());
         return ResponseEntity.ok(Map.of("ok", true));
@@ -98,7 +102,7 @@ public class AuthController {
     @PostMapping("/2fa/disable")
     public ResponseEntity<?> disableMfa(final Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof AuthPrincipal p)) {
-            return ResponseEntity.status(401).body(err("unauthorized"));
+            return ResponseEntity.status(401).body(err(ERROR_UNAUTHORIZED));
         }
         authService.disableMfa(p.userId());
         return ResponseEntity.ok(Map.of("ok", true));
@@ -114,7 +118,7 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<?> logout(final Authentication authentication) {
         if (authentication == null || authentication.getDetails() == null) {
-            return ResponseEntity.status(401).body(err("unauthorized"));
+            return ResponseEntity.status(401).body(err(ERROR_UNAUTHORIZED));
         }
         final String accessToken = String.valueOf(authentication.getDetails());
         authService.logout(accessToken);
@@ -124,7 +128,7 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<?> me(final Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof AuthPrincipal p)) {
-            return ResponseEntity.status(401).body(err("unauthorized"));
+            return ResponseEntity.status(401).body(err(ERROR_UNAUTHORIZED));
         }
         return ResponseEntity.ok(new MeResponse(p.username(), p.role()));
     }
@@ -132,7 +136,7 @@ public class AuthController {
     @GetMapping("/sessions")
     public ResponseEntity<?> sessions(final Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof AuthPrincipal p)) {
-            return ResponseEntity.status(401).body(err("unauthorized"));
+            return ResponseEntity.status(401).body(err(ERROR_UNAUTHORIZED));
         }
         final List<SessionRepository.SessionRow> sessions = sessionRepository.listSessions(p.userId());
         return ResponseEntity.ok(sessions);
@@ -141,14 +145,14 @@ public class AuthController {
     @PostMapping("/sessions/{token}/revoke")
     public ResponseEntity<?> revokeSession(@PathVariable("token") final String token, final Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof AuthPrincipal p)) {
-            return ResponseEntity.status(401).body(err("unauthorized"));
+            return ResponseEntity.status(401).body(err(ERROR_UNAUTHORIZED));
         }
 
         final java.util.UUID t;
         try {
             t = java.util.UUID.fromString(token.trim());
         }
-        catch (Exception e) {
+        catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(err("invalid_token"));
         }
 
@@ -179,10 +183,12 @@ public class AuthController {
         if (requestedRole == null || requestedRole.isBlank()) return Role.BUYER;
 
         final String r = requestedRole.trim().toUpperCase(Locale.ROOT);
-        if ("BUYER".equals(r)) return Role.BUYER;
-        if ("SELLER".equals(r)) return Role.SELLER;
-
-        return null;
+        try {
+            final Role parsed = Role.valueOf(r);
+            return (parsed == Role.ADMIN) ? null : parsed;
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
     }
 
     public record RegisterRequest(

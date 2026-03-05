@@ -24,6 +24,7 @@ class AuthControllerIT {
 
     private static final String AUTHZ = "Authorization";
     private static final String BEARER = "Bearer ";
+    private static final String ROLE_BUYER = "BUYER";
 
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper om;
@@ -44,7 +45,7 @@ class AuthControllerIT {
         final String verifyToken = om.readTree(regBody).get("verificationToken").asText();
         mvc.perform(post("/api/auth/verify-email")
                         .contentType(APPLICATION_JSON)
-                        .content("{\"token\":\"" + verifyToken + "\"}"))
+                        .content(om.writeValueAsString(java.util.Map.of("token", verifyToken))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.ok").value(true));
 
@@ -63,7 +64,7 @@ class AuthControllerIT {
         mvc.perform(get("/api/auth/me").header(AUTHZ, BEARER + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.username").value(username))
-                .andExpect(jsonPath("$.role").value("BUYER"));
+                .andExpect(jsonPath("$.role").value(ROLE_BUYER));
 
         mvc.perform(post("/api/auth/logout").header(AUTHZ, BEARER + accessToken))
                 .andExpect(status().isOk())
@@ -84,7 +85,7 @@ class AuthControllerIT {
         final String verifyToken = om.readTree(regBody).get("verificationToken").asText();
         mvc.perform(post("/api/auth/verify-email")
                         .contentType(APPLICATION_JSON)
-                        .content("{\"token\":\"" + verifyToken + "\"}"))
+                        .content(om.writeValueAsString(java.util.Map.of("token", verifyToken))))
                 .andExpect(status().isOk());
 
         mvc.perform(post("/api/auth/login")
@@ -110,7 +111,7 @@ class AuthControllerIT {
         final String verifyToken = om.readTree(regBody).get("verificationToken").asText();
         mvc.perform(post("/api/auth/verify-email")
                         .contentType(APPLICATION_JSON)
-                        .content("{\"token\":\"" + verifyToken + "\"}"))
+                        .content(om.writeValueAsString(java.util.Map.of("token", verifyToken))))
                 .andExpect(status().isOk());
 
         final String loginBody = mvc.perform(post("/api/auth/login")
@@ -125,7 +126,7 @@ class AuthControllerIT {
 
         final String refreshedBody = mvc.perform(post("/api/auth/refresh")
                         .contentType(APPLICATION_JSON)
-                        .content("{\"refreshToken\":\"" + refreshToken + "\"}"))
+                        .content(om.writeValueAsString(java.util.Map.of("refreshToken", refreshToken))))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
@@ -139,7 +140,7 @@ class AuthControllerIT {
 
         mvc.perform(post("/api/auth/refresh")
                         .contentType(APPLICATION_JSON)
-                        .content("{\"refreshToken\":\"" + refreshToken + "\"}"))
+                        .content(om.writeValueAsString(java.util.Map.of("refreshToken", refreshToken))))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").value("invalid_refresh_token"));
     }

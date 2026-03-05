@@ -16,7 +16,14 @@ import org.springframework.transaction.annotation.Transactional;
 Tanggung jawab: aturan bisnis auth (register/login/refresh/logout + enforce session limit).
  */
 @Service
+@SuppressWarnings({
+        "PMD.TooManyMethods",
+        "PMD.GodClass"
+})
 public class AuthService {
+
+    private static final String MFA_METHOD_EMAIL = "EMAIL";
+    private static final int DEFAULT_MAX_MFA_ATTEMPTS = 5;
 
     public record ClientMeta(String userAgent, String ip) {}
 
@@ -82,12 +89,7 @@ public class AuthService {
 
     @Transactional
     public void verifyEmail(final String tokenString) {
-        final UUID token;
-        try {
-            token = UUID.fromString(tokenString.trim());
-        } catch (Exception e) {
-            throw new AuthException(HttpStatus.BAD_REQUEST, "invalid_token");
-        }
+        final UUID token = parseUuidOrBadRequest(tokenString, "invalid_token");
 
         final Instant now = Instant.now(clock);
         final long userId = emailVerificationRepository.consumeIfValid(token, now)
@@ -98,35 +100,15 @@ public class AuthService {
 
     @Transactional
     public LoginResult login(final String username, final String password, final ClientMeta meta) {
-        final var user = userRepository.findByUsername(username)
-                .orElseThrow(AuthException::invalidCredentials);
-
-        if (user.disabled()) throw AuthException.userDisabled();
-        if (!user.emailVerified()) throw AuthException.emailNotVerified();
-
-        if (!passwordEncoder.matches(password, user.passwordHash())) {
-            throw AuthException.invalidCredentials();
-        }
+        final var user = findUserOrInvalidCredentials(username);
+        validateUserLoginState(user);
+        validatePasswordOrInvalidCredentials(user, password);
 
         final Instant now = Instant.now(clock);
         enforceConcurrentSessionLimit(user.id(), now);
 
         if (user.mfaEnabled()) {
-            final String method = (user.mfaMethod() == null || user.mfaMethod().isBlank())
-                    ? "EMAIL"
-                    : user.mfaMethod().trim().toUpperCase(Locale.ROOT);
-
-            if (!"EMAIL".equals(method)) {
-                throw new AuthException(HttpStatus.NOT_IMPLEMENTED, "mfa_method_not_supported");
-            }
-
-            final String code = generate6DigitCode();
-            final String hash = passwordEncoder.encode(code);
-            final UUID challengeId = mfaChallengeRepository.createEmailChallenge(user.id(), hash, now.plusSeconds(300));
-
-            log.info("DEV MFA EMAIL code for {}: {} (challengeId={})", username, code, challengeId);
-
-            return new LoginResult.MfaRequired(challengeId, "EMAIL", 300, code);
+            return beginMfaChallenge(user, username, now);
         }
 
         return new LoginResult.Tokens(issueTokens(user.id(), now, meta));
@@ -134,34 +116,21 @@ public class AuthService {
 
     @Transactional
     public SessionRepository.TokenPair verifyMfa(final String challengeIdStr, final String code, final ClientMeta meta) {
-        final UUID id;
-        try {
-            id = UUID.fromString(challengeIdStr.trim());
-        } catch (Exception e) {
-            throw AuthException.invalidMfaChallenge();
-        }
+        final UUID id = parseUuidOrInvalidMfaChallenge(challengeIdStr);
 
         final Instant now = Instant.now(clock);
         final var row = mfaChallengeRepository.findById(id).orElseThrow(AuthException::invalidMfaChallenge);
-
-        if (row.usedAt() != null) throw AuthException.invalidMfaChallenge();
-        if (row.expiresAt() == null || row.expiresAt().toInstant().isBefore(now)) throw AuthException.invalidMfaChallenge();
-        if (row.attempts() >= 5) throw AuthException.mfaTooManyAttempts();
-
-        if (code == null || code.isBlank() || !passwordEncoder.matches(code.trim(), row.codeHash())) {
-            mfaChallengeRepository.incrementAttempts(id);
-            throw AuthException.invalidMfaCode();
-        }
+        validateMfaChallengeOrThrow(row, now, props.getMfaMaxAttempts());
+        validateMfaCodeOrThrow(id, row, code);
 
         mfaChallengeRepository.markUsed(id, now);
-
         enforceConcurrentSessionLimit(row.userId(), now);
         return issueTokens(row.userId(), now, meta);
     }
 
     @Transactional
     public void enableEmailMfa(final long userId) {
-        userRepository.setMfa(userId, true, "EMAIL");
+        userRepository.setMfa(userId, true, MFA_METHOD_EMAIL);
     }
 
     @Transactional
@@ -223,5 +192,77 @@ public class AuthService {
     private static String generate6DigitCode() {
         final int n = (int) (Math.random() * 1_000_000);
         return String.format("%06d", n);
+    }
+
+    private UserRepository.UserRow findUserOrInvalidCredentials(final String username) {
+        return userRepository.findByUsername(username).orElseThrow(AuthException::invalidCredentials);
+    }
+
+    private void validateUserLoginState(final UserRepository.UserRow user) {
+        if (user.disabled()) throw AuthException.userDisabled();
+        if (!user.emailVerified()) throw AuthException.emailNotVerified();
+    }
+
+    private void validatePasswordOrInvalidCredentials(final UserRepository.UserRow user, final String password) {
+        final String safe = (password == null) ? "" : password;
+        if (!passwordEncoder.matches(safe, user.passwordHash())) {
+            throw AuthException.invalidCredentials();
+        }
+    }
+
+    private LoginResult beginMfaChallenge(final UserRepository.UserRow user, final String username, final Instant now) {
+        final String method = normalizeMfaMethod(user.mfaMethod());
+        if (!MFA_METHOD_EMAIL.equals(method)) {
+            throw new AuthException(HttpStatus.NOT_IMPLEMENTED, "mfa_method_not_supported");
+        }
+
+        final long ttlSeconds = props.getMfaChallengeTtlSeconds();
+        final String code = generate6DigitCode();
+        final String hash = passwordEncoder.encode(code);
+        final UUID challengeId = mfaChallengeRepository.createEmailChallenge(user.id(), hash, now.plusSeconds(ttlSeconds));
+
+        log.info("DEV MFA EMAIL code for {}: {} (challengeId={})", username, code, challengeId);
+
+        return new LoginResult.MfaRequired(challengeId, MFA_METHOD_EMAIL, ttlSeconds, code);
+    }
+
+    private static String normalizeMfaMethod(final String raw) {
+        if (raw == null || raw.isBlank()) return MFA_METHOD_EMAIL;
+        return raw.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private static UUID parseUuidOrBadRequest(final String raw, final String errorCode) {
+        if (raw == null || raw.isBlank()) {
+            throw new AuthException(HttpStatus.BAD_REQUEST, errorCode);
+        }
+        try {
+            return UUID.fromString(raw.trim());
+        } catch (IllegalArgumentException ex) {
+            throw new AuthException(HttpStatus.BAD_REQUEST, errorCode, ex);
+        }
+    }
+
+    private static UUID parseUuidOrInvalidMfaChallenge(final String raw) {
+        if (raw == null || raw.isBlank()) throw AuthException.invalidMfaChallenge();
+        try {
+            return UUID.fromString(raw.trim());
+        } catch (IllegalArgumentException ex) {
+            throw new AuthException(HttpStatus.UNAUTHORIZED, "invalid_mfa_challenge", ex);
+        }
+    }
+
+    private static void validateMfaChallengeOrThrow(final MfaChallengeRepository.Row row, final Instant now, final int maxAttemptsRaw) {
+        final int maxAttempts = (maxAttemptsRaw <= 0) ? DEFAULT_MAX_MFA_ATTEMPTS : maxAttemptsRaw;
+        if (row.usedAt() != null) throw AuthException.invalidMfaChallenge();
+        if (row.expiresAt() == null || row.expiresAt().toInstant().isBefore(now)) throw AuthException.invalidMfaChallenge();
+        if (row.attempts() >= maxAttempts) throw AuthException.mfaTooManyAttempts();
+    }
+
+    private void validateMfaCodeOrThrow(final UUID id, final MfaChallengeRepository.Row row, final String code) {
+        final String safe = (code == null) ? "" : code.trim();
+        if (safe.isBlank() || !passwordEncoder.matches(safe, row.codeHash())) {
+            mfaChallengeRepository.incrementAttempts(id);
+            throw AuthException.invalidMfaCode();
+        }
     }
 }
