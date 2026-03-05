@@ -20,6 +20,7 @@ jobs:
         working-directory: backend
         run: ./gradlew clean test pmdMain pmdTest
 
+      # Fullstack
       # Frontend
       - uses: actions/setup-node@v4
         with:
