@@ -12,6 +12,9 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class MfaChallengeRepository {
 
+    private static final String METHOD_EMAIL = "EMAIL";
+    private static final String METHOD_TOTP = "TOTP";
+
     private final JdbcTemplate jdbcTemplate;
 
     public MfaChallengeRepository(final JdbcTemplate jdbcTemplate) {
@@ -27,9 +30,22 @@ public class MfaChallengeRepository {
         jdbcTemplate.update(
                 """
                 INSERT INTO app_mfa_challenges(id, user_id, method, code_hash, expires_at)
-                VALUES (?, ?, 'EMAIL', ?, ?)
+                VALUES (?, ?, ?, ?, ?)
                 """,
-                id, userId, codeHash, odt(expiresAt)
+                id, userId, METHOD_EMAIL, codeHash, odt(expiresAt)
+        );
+        return id;
+    }
+
+    public UUID createTotpChallenge(final long userId, final Instant expiresAt) {
+        final UUID id = UUID.randomUUID();
+        // code_hash required NOT NULL by schema; store a constant placeholder for TOTP.
+        jdbcTemplate.update(
+                """
+                INSERT INTO app_mfa_challenges(id, user_id, method, code_hash, expires_at)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                id, userId, METHOD_TOTP, METHOD_TOTP, odt(expiresAt)
         );
         return id;
     }

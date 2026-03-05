@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.backend.auth;
 
+import id.ac.ui.cs.advprog.backend.security.RequiresPermission;
 import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -17,16 +18,16 @@ public class UserProfileController {
     }
 
     @GetMapping("/me/profile")
+    @RequiresPermission("profile:read")
     public ResponseEntity<?> getMyProfile(final Authentication authentication) {
         final AuthPrincipal p = requirePrincipal(authentication);
-        if (p == null) return ResponseEntity.status(401).body(Map.of(ERROR_KEY, "unauthorized"));
         return ResponseEntity.ok(userRepository.getProfile(p.userId()));
     }
 
     @PutMapping("/me/profile")
+    @RequiresPermission("profile:update")
     public ResponseEntity<?> updateMyProfile(final Authentication authentication, @RequestBody final UserRepository.UserProfile body) {
         final AuthPrincipal p = requirePrincipal(authentication);
-        if (p == null) return ResponseEntity.status(401).body(Map.of(ERROR_KEY, "unauthorized"));
 
         final var safe = new UserRepository.UserProfile(
                 body == null ? null : body.displayName(),
@@ -38,7 +39,6 @@ public class UserProfileController {
         return ResponseEntity.ok(Map.of("ok", true));
     }
 
-    // Public profile for catalog/listing (no shipping address)
     @GetMapping("/{id}/public-profile")
     public ResponseEntity<?> publicProfile(@PathVariable("id") final long id) {
         final var p = userRepository.getPublicProfile(id);
@@ -47,8 +47,9 @@ public class UserProfileController {
     }
 
     private static AuthPrincipal requirePrincipal(final Authentication authentication) {
-        if (authentication == null) return null;
-        if (!(authentication.getPrincipal() instanceof AuthPrincipal p)) return null;
+        if (authentication == null || !(authentication.getPrincipal() instanceof AuthPrincipal p)) {
+            throw new AuthException(org.springframework.http.HttpStatus.UNAUTHORIZED, "unauthorized");
+        }
         return p;
     }
 }

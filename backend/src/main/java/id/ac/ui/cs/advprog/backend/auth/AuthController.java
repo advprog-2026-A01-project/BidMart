@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.backend.auth;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
+import id.ac.ui.cs.advprog.backend.security.RequiresPermission;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Duration;
 import java.util.List;
@@ -91,20 +92,44 @@ public class AuthController {
     }
 
     @PostMapping("/2fa/enable-email")
+    @RequiresPermission("mfa:manage")
     public ResponseEntity<?> enableEmailMfa(final Authentication authentication) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof AuthPrincipal p)) {
-            return ResponseEntity.status(401).body(err(ERROR_UNAUTHORIZED));
-        }
+        final AuthPrincipal p = requirePrincipal(authentication);
         authService.enableEmailMfa(p.userId());
         return ResponseEntity.ok(Map.of("ok", true));
     }
 
     @PostMapping("/2fa/disable")
+    @RequiresPermission("mfa:manage")
     public ResponseEntity<?> disableMfa(final Authentication authentication) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof AuthPrincipal p)) {
-            return ResponseEntity.status(401).body(err(ERROR_UNAUTHORIZED));
-        }
+        final AuthPrincipal p = requirePrincipal(authentication);
         authService.disableMfa(p.userId());
+        return ResponseEntity.ok(Map.of("ok", true));
+    }
+
+    // ===== TOTP endpoints (NEW) =====
+
+    @PostMapping("/2fa/totp/setup")
+    @RequiresPermission("mfa:manage")
+    public ResponseEntity<?> setupTotp(final Authentication authentication) {
+        final AuthPrincipal p = requirePrincipal(authentication);
+        final var setup = authService.setupTotp(p.userId(), p.username());
+        return ResponseEntity.ok(new TotpSetupResponse(true, setup.secret(), setup.otpauthUrl()));
+    }
+
+    @PostMapping("/2fa/totp/enable")
+    @RequiresPermission("mfa:manage")
+    public ResponseEntity<?> enableTotp(final Authentication authentication, @RequestBody final TotpEnableRequest body) {
+        final AuthPrincipal p = requirePrincipal(authentication);
+        authService.enableTotp(p.userId(), body == null ? null : body.code());
+        return ResponseEntity.ok(Map.of("ok", true));
+    }
+
+    @PostMapping("/2fa/totp/disable")
+    @RequiresPermission("mfa:manage")
+    public ResponseEntity<?> disableTotp(final Authentication authentication) {
+        final AuthPrincipal p = requirePrincipal(authentication);
+        authService.disableTotp(p.userId());
         return ResponseEntity.ok(Map.of("ok", true));
     }
 
@@ -116,6 +141,7 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
+    @RequiresPermission("session:logout")
     public ResponseEntity<?> logout(final Authentication authentication) {
         if (authentication == null || authentication.getDetails() == null) {
             return ResponseEntity.status(401).body(err(ERROR_UNAUTHORIZED));
@@ -126,27 +152,24 @@ public class AuthController {
     }
 
     @GetMapping("/me")
+    @RequiresPermission("session:me")
     public ResponseEntity<?> me(final Authentication authentication) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof AuthPrincipal p)) {
-            return ResponseEntity.status(401).body(err(ERROR_UNAUTHORIZED));
-        }
+        final AuthPrincipal p = requirePrincipal(authentication);
         return ResponseEntity.ok(new MeResponse(p.username(), p.role()));
     }
 
     @GetMapping("/sessions")
+    @RequiresPermission("session:list")
     public ResponseEntity<?> sessions(final Authentication authentication) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof AuthPrincipal p)) {
-            return ResponseEntity.status(401).body(err(ERROR_UNAUTHORIZED));
-        }
+        final AuthPrincipal p = requirePrincipal(authentication);
         final List<SessionRepository.SessionRow> sessions = sessionRepository.listSessions(p.userId());
         return ResponseEntity.ok(sessions);
     }
 
     @PostMapping("/sessions/{token}/revoke")
+    @RequiresPermission("session:revoke")
     public ResponseEntity<?> revokeSession(@PathVariable("token") final String token, final Authentication authentication) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof AuthPrincipal p)) {
-            return ResponseEntity.status(401).body(err(ERROR_UNAUTHORIZED));
-        }
+        final AuthPrincipal p = requirePrincipal(authentication);
 
         final java.util.UUID t;
         try {
@@ -191,6 +214,13 @@ public class AuthController {
         }
     }
 
+    private static AuthPrincipal requirePrincipal(final Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof AuthPrincipal p)) {
+            throw new AuthException(HttpStatus.UNAUTHORIZED, ERROR_UNAUTHORIZED);
+        }
+        return p;
+    }
+
     public record RegisterRequest(
             @JsonAlias({"email"})
             String username,
@@ -200,7 +230,6 @@ public class AuthController {
     ) {}
 
     public record RegisterResponse(boolean ok, String verificationToken) {}
-
     public record VerifyEmailRequest(String token) {}
 
     public record LoginRequest(
@@ -210,12 +239,12 @@ public class AuthController {
     ) {}
 
     public record MfaVerifyRequest(String challengeId, String code) {}
-
     public record MfaChallengeResponse(boolean mfaRequired, String challengeId, String method, long expiresIn, String devCode) {}
 
+    public record TotpSetupResponse(boolean ok, String secret, String otpauthUrl) {}
+    public record TotpEnableRequest(String code) {}
+
     public record RefreshRequest(String refreshToken) {}
-
     public record TokenResponse(String accessToken, String refreshToken, String tokenType, long expiresIn) {}
-
     public record MeResponse(String username, String role) {}
 }

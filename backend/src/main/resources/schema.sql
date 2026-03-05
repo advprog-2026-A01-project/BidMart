@@ -25,7 +25,6 @@ CREATE TABLE IF NOT EXISTS app_users (
     shipping_address TEXT
 );
 
--- Ensure columns exist for older databases
 ALTER TABLE app_users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE app_users ADD COLUMN IF NOT EXISTS mfa_enabled BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE app_users ADD COLUMN IF NOT EXISTS mfa_method VARCHAR(16);
@@ -45,7 +44,7 @@ CREATE TABLE IF NOT EXISTS app_sessions (
     revoked_at TIMESTAMP WITH TIME ZONE,
     user_agent TEXT,
     ip TEXT
- );
+);
 
 ALTER TABLE app_sessions ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMP WITH TIME ZONE;
 ALTER TABLE app_sessions ADD COLUMN IF NOT EXISTS user_agent TEXT;
@@ -96,19 +95,81 @@ CREATE TABLE IF NOT EXISTS app_role_permissions (
     PRIMARY KEY(role_name, perm_key)
 );
 
--- seed built-in roles
 INSERT INTO app_roles(name) VALUES ('ADMIN')  ON CONFLICT DO NOTHING;
 INSERT INTO app_roles(name) VALUES ('SELLER') ON CONFLICT DO NOTHING;
 INSERT INTO app_roles(name) VALUES ('BUYER')  ON CONFLICT DO NOTHING;
 
--- optional seed permissions (demo-friendly)
+-- ===== Permission seeds (needed for @RequiresPermission) =====
+INSERT INTO app_permissions(perm_key, description) VALUES ('profile:read','Read own profile') ON CONFLICT DO NOTHING;
+INSERT INTO app_permissions(perm_key, description) VALUES ('profile:update','Update own profile') ON CONFLICT DO NOTHING;
+
+INSERT INTO app_permissions(perm_key, description) VALUES ('session:me','Read my identity') ON CONFLICT DO NOTHING;
+INSERT INTO app_permissions(perm_key, description) VALUES ('session:logout','Logout') ON CONFLICT DO NOTHING;
+INSERT INTO app_permissions(perm_key, description) VALUES ('session:list','List my sessions') ON CONFLICT DO NOTHING;
+INSERT INTO app_permissions(perm_key, description) VALUES ('session:revoke','Revoke my session') ON CONFLICT DO NOTHING;
+
+INSERT INTO app_permissions(perm_key, description) VALUES ('mfa:manage','Manage 2FA methods') ON CONFLICT DO NOTHING;
+
+INSERT INTO app_permissions(perm_key, description) VALUES ('rbac:read','Read RBAC') ON CONFLICT DO NOTHING;
+INSERT INTO app_permissions(perm_key, description) VALUES ('rbac:write','Write RBAC') ON CONFLICT DO NOTHING;
+
+INSERT INTO app_permissions(perm_key, description) VALUES ('users:read','Admin read users') ON CONFLICT DO NOTHING;
+INSERT INTO app_permissions(perm_key, description) VALUES ('users:write','Admin modify users') ON CONFLICT DO NOTHING;
+
+-- existing examples
 INSERT INTO app_permissions(perm_key, description) VALUES ('bid:place','Place bid') ON CONFLICT DO NOTHING;
 INSERT INTO app_permissions(perm_key, description) VALUES ('auction:create','Create auction') ON CONFLICT DO NOTHING;
 INSERT INTO app_permissions(perm_key, description) VALUES ('wallet:read','Read wallet') ON CONFLICT DO NOTHING;
 
--- optional default mappings
+-- BUYER defaults
+INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('BUYER','profile:read') ON CONFLICT DO NOTHING;
+INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('BUYER','profile:update') ON CONFLICT DO NOTHING;
+INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('BUYER','session:me') ON CONFLICT DO NOTHING;
+INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('BUYER','session:logout') ON CONFLICT DO NOTHING;
+INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('BUYER','session:list') ON CONFLICT DO NOTHING;
+INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('BUYER','session:revoke') ON CONFLICT DO NOTHING;
+INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('BUYER','mfa:manage') ON CONFLICT DO NOTHING;
 INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('BUYER','bid:place') ON CONFLICT DO NOTHING;
+
+-- SELLER defaults
+INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('SELLER','profile:read') ON CONFLICT DO NOTHING;
+INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('SELLER','profile:update') ON CONFLICT DO NOTHING;
+INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('SELLER','session:me') ON CONFLICT DO NOTHING;
+INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('SELLER','session:logout') ON CONFLICT DO NOTHING;
+INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('SELLER','session:list') ON CONFLICT DO NOTHING;
+INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('SELLER','session:revoke') ON CONFLICT DO NOTHING;
+INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('SELLER','mfa:manage') ON CONFLICT DO NOTHING;
 INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('SELLER','auction:create') ON CONFLICT DO NOTHING;
+
+-- ADMIN defaults (superset)
+INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('ADMIN','profile:read') ON CONFLICT DO NOTHING;
+INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('ADMIN','profile:update') ON CONFLICT DO NOTHING;
+INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('ADMIN','session:me') ON CONFLICT DO NOTHING;
+INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('ADMIN','session:logout') ON CONFLICT DO NOTHING;
+INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('ADMIN','session:list') ON CONFLICT DO NOTHING;
+INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('ADMIN','session:revoke') ON CONFLICT DO NOTHING;
+INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('ADMIN','mfa:manage') ON CONFLICT DO NOTHING;
+
+INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('ADMIN','rbac:read') ON CONFLICT DO NOTHING;
+INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('ADMIN','rbac:write') ON CONFLICT DO NOTHING;
+INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('ADMIN','users:read') ON CONFLICT DO NOTHING;
+INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('ADMIN','users:write') ON CONFLICT DO NOTHING;
+
 INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('ADMIN','bid:place') ON CONFLICT DO NOTHING;
 INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('ADMIN','auction:create') ON CONFLICT DO NOTHING;
 INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('ADMIN','wallet:read') ON CONFLICT DO NOTHING;
+
+-- ===== Outbox (event publishing, reliable via DB) =====
+
+CREATE TABLE IF NOT EXISTS app_outbox_events (
+    id UUID PRIMARY KEY,
+    event_type VARCHAR(64) NOT NULL,
+    aggregate_type VARCHAR(64) NOT NULL,
+    aggregate_id VARCHAR(64) NOT NULL,
+    payload_json TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    published_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE INDEX IF NOT EXISTS idx_outbox_created_at ON app_outbox_events(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_outbox_unpublished ON app_outbox_events(published_at);

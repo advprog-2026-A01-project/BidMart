@@ -11,10 +11,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-
-/*
-Tanggung jawab: aturan bisnis auth (register/login/refresh/logout + enforce session limit).
- */
 @Service
 @SuppressWarnings({
         "PMD.TooManyMethods",
@@ -23,6 +19,7 @@ Tanggung jawab: aturan bisnis auth (register/login/refresh/logout + enforce sess
 public class AuthService {
 
     private static final String MFA_METHOD_EMAIL = "EMAIL";
+    private static final String MFA_METHOD_TOTP = "TOTP";
     private static final int DEFAULT_MAX_MFA_ATTEMPTS = 5;
 
     public record ClientMeta(String userAgent, String ip) {}
@@ -31,6 +28,8 @@ public class AuthService {
         record Tokens(SessionRepository.TokenPair tokens) implements LoginResult {}
         record MfaRequired(UUID challengeId, String method, long expiresInSeconds, String devCode) implements LoginResult {}
     }
+
+    public record TotpSetup(String secret, String otpauthUrl) {}
 
     private final UserRepository userRepository;
     private final SessionRepository sessionRepository;
@@ -121,7 +120,22 @@ public class AuthService {
         final Instant now = Instant.now(clock);
         final var row = mfaChallengeRepository.findById(id).orElseThrow(AuthException::invalidMfaChallenge);
         validateMfaChallengeOrThrow(row, now, props.getMfaMaxAttempts());
-        validateMfaCodeOrThrow(id, row, code);
+
+        final String method = normalizeMfaMethod(row.method());
+        if (MFA_METHOD_TOTP.equals(method)) {
+            final String secret = userRepository.getTotpSecret(row.userId()).orElse(null);
+            if (secret == null) {
+                mfaChallengeRepository.incrementAttempts(id);
+                throw AuthException.invalidMfaCode();
+            }
+            final boolean ok = TotpUtil.verifyCode(secret, code, now);
+            if (!ok) {
+                mfaChallengeRepository.incrementAttempts(id);
+                throw AuthException.invalidMfaCode();
+            }
+        } else {
+            validateMfaCodeOrThrowEmail(id, row, code);
+        }
 
         mfaChallengeRepository.markUsed(id, now);
         enforceConcurrentSessionLimit(row.userId(), now);
@@ -137,6 +151,41 @@ public class AuthService {
     public void disableMfa(final long userId) {
         userRepository.setMfa(userId, false, null);
     }
+
+    // ===== TOTP manage =====
+
+    @Transactional
+    public TotpSetup setupTotp(final long userId, final String usernameForLabel) {
+        final String secret = TotpUtil.generateBase32Secret(20);
+        userRepository.setTotpSecret(userId, secret);
+
+        final String issuer = "BidMart";
+        final String account = (usernameForLabel == null || usernameForLabel.isBlank()) ? ("user-" + userId) : usernameForLabel;
+        final String uri = TotpUtil.otpauthUri(issuer, account, secret);
+
+        return new TotpSetup(secret, uri);
+    }
+
+    @Transactional
+    public void enableTotp(final long userId, final String code) {
+        final Instant now = Instant.now(clock);
+        final String secret = userRepository.getTotpSecret(userId)
+                .orElseThrow(() -> new AuthException(HttpStatus.BAD_REQUEST, "totp_not_configured"));
+
+        if (!TotpUtil.verifyCode(secret, code, now)) {
+            throw new AuthException(HttpStatus.BAD_REQUEST, "invalid_totp_code");
+        }
+
+        userRepository.setMfa(userId, true, MFA_METHOD_TOTP);
+    }
+
+    @Transactional
+    public void disableTotp(final long userId) {
+        userRepository.setMfa(userId, false, null);
+        userRepository.clearTotpSecret(userId);
+    }
+
+    // ===== token lifecycle =====
 
     @Transactional
     public SessionRepository.TokenPair refresh(final String refreshToken, final ClientMeta meta) {
@@ -212,17 +261,26 @@ public class AuthService {
 
     private LoginResult beginMfaChallenge(final UserRepository.UserRow user, final String username, final Instant now) {
         final String method = normalizeMfaMethod(user.mfaMethod());
-        if (!MFA_METHOD_EMAIL.equals(method)) {
-            throw new AuthException(HttpStatus.NOT_IMPLEMENTED, "mfa_method_not_supported");
-        }
 
         final long ttlSeconds = props.getMfaChallengeTtlSeconds();
+        final Instant expires = now.plusSeconds(ttlSeconds);
+
+        if (MFA_METHOD_TOTP.equals(method)) {
+            // must have secret
+            final String secret = (user.totpSecret() == null || user.totpSecret().isBlank()) ? null : user.totpSecret();
+            if (secret == null) {
+                throw new AuthException(HttpStatus.BAD_REQUEST, "totp_not_configured");
+            }
+            final UUID challengeId = mfaChallengeRepository.createTotpChallenge(user.id(), expires);
+            return new LoginResult.MfaRequired(challengeId, MFA_METHOD_TOTP, ttlSeconds, null);
+        }
+
+        // default EMAIL
         final String code = generate6DigitCode();
         final String hash = passwordEncoder.encode(code);
-        final UUID challengeId = mfaChallengeRepository.createEmailChallenge(user.id(), hash, now.plusSeconds(ttlSeconds));
+        final UUID challengeId = mfaChallengeRepository.createEmailChallenge(user.id(), hash, expires);
 
         log.info("DEV MFA EMAIL code for {}: {} (challengeId={})", username, code, challengeId);
-
         return new LoginResult.MfaRequired(challengeId, MFA_METHOD_EMAIL, ttlSeconds, code);
     }
 
@@ -258,7 +316,7 @@ public class AuthService {
         if (row.attempts() >= maxAttempts) throw AuthException.mfaTooManyAttempts();
     }
 
-    private void validateMfaCodeOrThrow(final UUID id, final MfaChallengeRepository.Row row, final String code) {
+    private void validateMfaCodeOrThrowEmail(final UUID id, final MfaChallengeRepository.Row row, final String code) {
         final String safe = (code == null) ? "" : code.trim();
         if (safe.isBlank() || !passwordEncoder.matches(safe, row.codeHash())) {
             mfaChallengeRepository.incrementAttempts(id);

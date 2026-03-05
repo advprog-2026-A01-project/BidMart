@@ -10,12 +10,6 @@ import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
-/*
-Tanggung jawab: operasi DB untuk user.
-- findByUsername
-- insert
-- setDisabled (fondasi admin)
-*/
 @Repository
 public class UserRepository {
 
@@ -28,7 +22,7 @@ public class UserRepository {
     public Optional<UserRow> findByUsername(final String username) {
         final var rows = jdbcTemplate.query(
                 """
-                SELECT id, username, password_hash, role, is_disabled, email_verified, mfa_enabled, mfa_method
+                SELECT id, username, password_hash, role, is_disabled, email_verified, mfa_enabled, mfa_method, totp_secret
                 FROM app_users
                 WHERE username = ?
                 """,
@@ -40,7 +34,8 @@ public class UserRepository {
                         rs.getBoolean("is_disabled"),
                         rs.getBoolean("email_verified"),
                         rs.getBoolean("mfa_enabled"),
-                        rs.getString("mfa_method")
+                        rs.getString("mfa_method"),
+                        rs.getString("totp_secret")
                 ),
                 username
         );
@@ -80,7 +75,6 @@ public class UserRepository {
         return null;
     }
 
-    // updateRole()
     public void updateRole(final long userId, final Role role) {
         jdbcTemplate.update("UPDATE app_users SET role = ? WHERE id = ?", role.name(), userId);
     }
@@ -124,7 +118,6 @@ public class UserRepository {
         return rows.isEmpty() ? null : rows.get(0);
     }
 
-    // list of users
     public List<UserSummary> listUsers() {
         return jdbcTemplate.query(
                 "SELECT id, username, role, is_disabled, created_at FROM app_users ORDER BY id",
@@ -142,18 +135,6 @@ public class UserRepository {
         jdbcTemplate.update("UPDATE app_users SET role = ? WHERE id = ?", roleName, userId);
     }
 
-    public record UserProfile(String displayName, String photoUrl, String shippingAddress) {}
-    public record PublicProfile(long id, String username, String displayName, String photoUrl, String role) {}
-
-    // UserSummary
-    public record UserSummary(
-            long id,
-            String username,
-            String role,
-            boolean disabled,
-            java.time.OffsetDateTime createdAt
-    ) {}
-
     public void setDisabled(final long userId, final boolean disabled) {
         jdbcTemplate.update("UPDATE app_users SET is_disabled = ? WHERE id = ?", disabled, userId);
     }
@@ -166,6 +147,36 @@ public class UserRepository {
         jdbcTemplate.update("UPDATE app_users SET mfa_enabled = ?, mfa_method = ? WHERE id = ?", enabled, method, userId);
     }
 
+    public void setTotpSecret(final long userId, final String secret) {
+        jdbcTemplate.update("UPDATE app_users SET totp_secret = ? WHERE id = ?", secret, userId);
+    }
+
+    public void clearTotpSecret(final long userId) {
+        jdbcTemplate.update("UPDATE app_users SET totp_secret = NULL WHERE id = ?", userId);
+    }
+
+    public Optional<String> getTotpSecret(final long userId) {
+        final List<String> rows = jdbcTemplate.query(
+                "SELECT totp_secret FROM app_users WHERE id = ?",
+                (rs, n) -> rs.getString("totp_secret"),
+                userId
+        );
+        if (rows.isEmpty()) return Optional.empty();
+        final String s = rows.get(0);
+        return (s == null || s.isBlank()) ? Optional.empty() : Optional.of(s);
+    }
+
+    public record UserProfile(String displayName, String photoUrl, String shippingAddress) {}
+    public record PublicProfile(long id, String username, String displayName, String photoUrl, String role) {}
+
+    public record UserSummary(
+            long id,
+            String username,
+            String role,
+            boolean disabled,
+            java.time.OffsetDateTime createdAt
+    ) {}
+
     public record UserRow(
             long id,
             String username,
@@ -174,6 +185,7 @@ public class UserRepository {
             boolean disabled,
             boolean emailVerified,
             boolean mfaEnabled,
-            String mfaMethod
+            String mfaMethod,
+            String totpSecret
     ) {}
 }

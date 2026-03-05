@@ -1,9 +1,12 @@
 package id.ac.ui.cs.advprog.backend.auth;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import id.ac.ui.cs.advprog.backend.security.RequiresPermission;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.Map;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -16,26 +19,35 @@ public class AdminUserController {
     private final SessionRepository sessionRepository;
     private final RbacRepository rbacRepository;
     private final ClockHolder clockHolder;
+    private final OutboxRepository outboxRepository;
+    private final ObjectMapper objectMapper;
 
     public AdminUserController(
             final UserRepository userRepository,
             final SessionRepository sessionRepository,
             final RbacRepository rbacRepository,
-            final ClockHolder clockHolder
+            final ClockHolder clockHolder,
+            final OutboxRepository outboxRepository,
+            final ObjectMapper objectMapper
     ) {
         this.userRepository = userRepository;
         this.sessionRepository = sessionRepository;
         this.rbacRepository = rbacRepository;
         this.clockHolder = clockHolder;
+        this.outboxRepository = outboxRepository;
+        this.objectMapper = objectMapper;
     }
 
     @GetMapping
+    @RequiresPermission("users:read")
     public ResponseEntity<?> listUsers() {
         return ResponseEntity.ok(userRepository.listUsers());
     }
 
     @PostMapping("/{id}/role")
-    public ResponseEntity<?> setRole(@PathVariable("id") final long id, @RequestBody final RoleUpdate body) {
+    @RequiresPermission("users:write")
+    @Transactional
+    public ResponseEntity<?> setRole(@PathVariable("id") final long id, @RequestBody final RoleUpdate body) throws Exception {
         final String roleName = normalizeRoleName(body.role());
         if (roleName == null) return ResponseEntity.badRequest().body(err("invalid_role"));
 
@@ -44,17 +56,32 @@ public class AdminUserController {
         }
 
         userRepository.updateRoleName(id, roleName);
+
+        final String payload = objectMapper.writeValueAsString(Map.of(
+                "userId", id,
+                "newRole", roleName
+        ));
+        outboxRepository.append("UserRoleChanged", "User", String.valueOf(id), payload, Instant.now(clockHolder.clock()));
+
         return ResponseEntity.ok(Map.of("ok", true));
     }
 
     @PostMapping("/{id}/disable")
-    public ResponseEntity<?> disable(@PathVariable("id") final long id, @RequestBody final DisableUpdate body) {
+    @RequiresPermission("users:write")
+    @Transactional
+    public ResponseEntity<?> disable(@PathVariable("id") final long id, @RequestBody final DisableUpdate body) throws Exception {
         final boolean disabled = body.disabled();
         userRepository.setDisabled(id, disabled);
 
         if (disabled) {
             sessionRepository.revokeAllByUserId(id, Instant.now(clockHolder.clock()));
         }
+
+        final String payload = objectMapper.writeValueAsString(Map.of(
+                "userId", id,
+                "disabled", disabled
+        ));
+        outboxRepository.append("UserDisabledChanged", "User", String.valueOf(id), payload, Instant.now(clockHolder.clock()));
 
         return ResponseEntity.ok(Map.of("ok", true));
     }
