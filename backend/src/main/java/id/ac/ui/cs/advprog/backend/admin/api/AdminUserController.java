@@ -3,7 +3,8 @@ package id.ac.ui.cs.advprog.backend.admin.api;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import id.ac.ui.cs.advprog.backend.auth.repository.OutboxRepository;
 import id.ac.ui.cs.advprog.backend.auth.repository.SessionRepository;
-import id.ac.ui.cs.advprog.backend.auth.repository.UserRepository;
+import id.ac.ui.cs.advprog.backend.auth.repository.UserAdminRepository;
+import id.ac.ui.cs.advprog.backend.auth.repository.UserAuthRepository;
 import id.ac.ui.cs.advprog.backend.auth.util.ClockHolder;
 import id.ac.ui.cs.advprog.backend.rbac.repository.RbacRepository;
 import id.ac.ui.cs.advprog.backend.security.RequiresPermission;
@@ -20,7 +21,8 @@ public class AdminUserController {
 
     private static final String ERROR_KEY = "error";
 
-    private final UserRepository userRepository;
+    private final UserAdminRepository userAdminRepository;
+    private final UserAuthRepository userAuthRepository;
     private final SessionRepository sessionRepository;
     private final RbacRepository rbacRepository;
     private final ClockHolder clockHolder;
@@ -28,14 +30,16 @@ public class AdminUserController {
     private final ObjectMapper objectMapper;
 
     public AdminUserController(
-            final UserRepository userRepository,
+            final UserAdminRepository userAdminRepository,
+            final UserAuthRepository userAuthRepository,
             final SessionRepository sessionRepository,
             final RbacRepository rbacRepository,
             final ClockHolder clockHolder,
             final OutboxRepository outboxRepository,
             final ObjectMapper objectMapper
     ) {
-        this.userRepository = userRepository;
+        this.userAdminRepository = userAdminRepository;
+        this.userAuthRepository = userAuthRepository;
         this.sessionRepository = sessionRepository;
         this.rbacRepository = rbacRepository;
         this.clockHolder = clockHolder;
@@ -46,7 +50,7 @@ public class AdminUserController {
     @GetMapping
     @RequiresPermission("users:read")
     public ResponseEntity<?> listUsers() {
-        return ResponseEntity.ok(userRepository.listUsers());
+        return ResponseEntity.ok(userAdminRepository.listUsers());
     }
 
     @PostMapping("/{id}/role")
@@ -60,18 +64,18 @@ public class AdminUserController {
             return ResponseEntity.badRequest().body(err("role_not_found"));
         }
 
-        // 1) update role
-        userRepository.updateRoleName(id, roleName);
+        // update role
+        userAuthRepository.updateRoleName(id, roleName);
 
-        // 2) IMPORTANT: invalidate all active sessions so user must re-login and get new role/permissions
+        // IMPORTANT: revoke all sessions so user must re-login and get fresh role/permissions
         sessionRepository.revokeAllByUserId(id, Instant.now(clockHolder.clock()));
 
-        // 3) publish event (for other modules / caches)
-        final String payload = objectMapper.writeValueAsString(Map.of(
-                "userId", id,
-                "newRole", roleName
-        ));
-        outboxRepository.append("UserRoleChanged", "User", String.valueOf(id), payload, Instant.now(clockHolder.clock()));
+        // outbox event
+        final String payload = objectMapper.writeValueAsString(Map.of("userId", id, "newRole", roleName));
+        outboxRepository.append(
+                new OutboxRepository.OutboxEvent("UserRoleChanged", "User", String.valueOf(id), payload),
+                Instant.now(clockHolder.clock())
+        );
 
         return ResponseEntity.ok(Map.of("ok", true));
     }
@@ -81,17 +85,17 @@ public class AdminUserController {
     @Transactional
     public ResponseEntity<?> disable(@PathVariable("id") final long id, @RequestBody final DisableUpdate body) throws Exception {
         final boolean disabled = body.disabled();
-        userRepository.setDisabled(id, disabled);
+        userAuthRepository.setDisabled(id, disabled);
 
         if (disabled) {
             sessionRepository.revokeAllByUserId(id, Instant.now(clockHolder.clock()));
         }
 
-        final String payload = objectMapper.writeValueAsString(Map.of(
-                "userId", id,
-                "disabled", disabled
-        ));
-        outboxRepository.append("UserDisabledChanged", "User", String.valueOf(id), payload, Instant.now(clockHolder.clock()));
+        final String payload = objectMapper.writeValueAsString(Map.of("userId", id, "disabled", disabled));
+        outboxRepository.append(
+                new OutboxRepository.OutboxEvent("UserDisabledChanged", "User", String.valueOf(id), payload),
+                Instant.now(clockHolder.clock())
+        );
 
         return ResponseEntity.ok(Map.of("ok", true));
     }

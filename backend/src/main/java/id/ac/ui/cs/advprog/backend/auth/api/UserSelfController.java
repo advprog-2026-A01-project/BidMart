@@ -4,7 +4,7 @@ import java.util.Locale;
 import java.util.Map;
 
 import id.ac.ui.cs.advprog.backend.auth.model.AuthPrincipal;
-import id.ac.ui.cs.advprog.backend.auth.repository.UserRepository;
+import id.ac.ui.cs.advprog.backend.auth.repository.UserAuthRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -17,10 +17,10 @@ public class UserSelfController {
     private static final String ERROR_UNAUTHORIZED = "unauthorized";
     private static final String ROLE_BUYER = "BUYER";
     private static final String ROLE_SELLER = "SELLER";
-    private final UserRepository userRepository;
+    private final UserAuthRepository userAuthRepository;
 
-    public UserSelfController(final UserRepository userRepository) {
-        this.userRepository = userRepository;
+    public UserSelfController(final UserAuthRepository userAuthRepository) {
+        this.userAuthRepository = userAuthRepository;
     }
 
     @PostMapping("/become-seller")
@@ -31,7 +31,7 @@ public class UserSelfController {
 
         final String role = (p.role() == null || p.role().isBlank()) ? ROLE_BUYER : p.role().trim().toUpperCase(Locale.ROOT);
         if (ROLE_BUYER.equals(role)) {
-            userRepository.updateRoleName(p.userId(), ROLE_SELLER);
+            userAuthRepository.updateRoleName(p.userId(), ROLE_SELLER);
         }
 
         return ResponseEntity.ok(Map.of("ok", true));

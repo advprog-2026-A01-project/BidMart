@@ -2,18 +2,33 @@ package id.ac.ui.cs.advprog.backend.auth.util;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Locale;
+import java.util.regex.Pattern;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
 public final class TotpUtil {
 
     private static final String HMAC_ALG = "HmacSHA1";
+
     private static final int DEFAULT_DIGITS = 6;
     private static final int DEFAULT_PERIOD_SECONDS = 30;
-    private static final int DEFAULT_SKEW_STEPS = 1; // allow -1,0,+1 time step
+    private static final int DEFAULT_SKEW_STEPS = 1;
+
+    private static final int ZERO = 0;
+    private static final int ONE = 1;
+    private static final int FIVE = 5;
+    private static final int EIGHT = 8;
+    private static final int TWENTY_FOUR = 24;
+    private static final int NEG_ONE = -1;
+    private static final int BYTE_MASK = 0xFF;
+
+    private static final String EMPTY = "";
+    private static final Pattern CODE_PATTERN = Pattern.compile("^\\d{6,8}$");
 
     private static final char[] B32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567".toCharArray();
     private static final int[] B32_INV = buildInv();
@@ -30,7 +45,7 @@ public final class TotpUtil {
         final String safeIssuer = urlEncode(issuer);
         final String safeAccount = urlEncode(account);
         final String safeSecret = urlEncode(base32Secret);
-        // Standard otpauth URI (works for Google Authenticator / Authy / etc)
+
         return "otpauth://totp/" + safeIssuer + ":" + safeAccount
                 + "?secret=" + safeSecret
                 + "&issuer=" + safeIssuer
@@ -39,8 +54,8 @@ public final class TotpUtil {
     }
 
     public static boolean verifyCode(final String base32Secret, final String code, final Instant now) {
-        final String normalized = (code == null) ? "" : code.trim();
-        if (!normalized.matches("\\d{6,8}")) return false;
+        final String normalized = (code == null) ? EMPTY : code.trim();
+        if (!CODE_PATTERN.matcher(normalized).matches()) return false;
 
         final int digits = normalized.length();
         final long counter = now.getEpochSecond() / DEFAULT_PERIOD_SECONDS;
@@ -54,16 +69,16 @@ public final class TotpUtil {
 
     private static String generateTotp(final String base32Secret, final long counter, final int digits) {
         final byte[] key = base32Decode(base32Secret);
-        final byte[] msg = ByteBuffer.allocate(8).putLong(counter).array();
+        final byte[] msg = ByteBuffer.allocate(EIGHT).putLong(counter).array();
 
         final byte[] hash = hmacSha1(key, msg);
-        final int offset = hash[hash.length - 1] & 0x0F;
+        final int offset = hash[hash.length - ONE] & 0x0F;
 
         final int binary =
-                ((hash[offset] & 0x7F) << 24)
-                        | ((hash[offset + 1] & 0xFF) << 16)
-                        | ((hash[offset + 2] & 0xFF) << 8)
-                        | (hash[offset + 3] & 0xFF);
+                ((hash[offset] & 0x7F) << TWENTY_FOUR)
+                        | ((hash[offset + ONE] & BYTE_MASK) << 16)
+                        | ((hash[offset + 2] & BYTE_MASK) << EIGHT)
+                        | (hash[offset + 3] & BYTE_MASK);
 
         final int mod = (int) Math.pow(10, digits);
         final int otp = binary % mod;
@@ -75,73 +90,73 @@ public final class TotpUtil {
             final Mac mac = Mac.getInstance(HMAC_ALG);
             mac.init(new SecretKeySpec(key, HMAC_ALG));
             return mac.doFinal(msg);
-        } catch (Exception ex) {
+        } catch (NoSuchAlgorithmException | InvalidKeyException ex) {
             throw new IllegalStateException("totp_hmac_failed", ex);
         }
     }
 
-    // ===== Base32 (RFC 4648) =====
-
     private static int[] buildInv() {
         final int[] inv = new int[256];
-        for (int i = 0; i < inv.length; i++) inv[i] = -1;
-        for (int i = 0; i < B32.length; i++) {
-            inv[B32[i]] = i;
-        }
+        for (int i = ZERO; i < inv.length; i++) inv[i] = NEG_ONE;
+        for (int i = ZERO; i < B32.length; i++) inv[B32[i]] = i;
         return inv;
     }
 
     private static String base32Encode(final byte[] data) {
-        final StringBuilder sb = new StringBuilder((data.length * 8 + 4) / 5);
-        int buffer = 0;
-        int bitsLeft = 0;
+        final StringBuilder sb = new StringBuilder((data.length * EIGHT + 4) / FIVE);
+        int buffer = ZERO;
+        int bitsLeft = ZERO;
+
         for (byte b : data) {
-            buffer = (buffer << 8) | (b & 0xFF);
-            bitsLeft += 8;
-            while (bitsLeft >= 5) {
-                final int idx = (buffer >> (bitsLeft - 5)) & 0x1F;
-                bitsLeft -= 5;
+            buffer = (buffer << EIGHT) | (b & BYTE_MASK);
+            bitsLeft += EIGHT;
+
+            while (bitsLeft >= FIVE) {
+                final int idx = (buffer >> (bitsLeft - FIVE)) & 0x1F;
+                bitsLeft -= FIVE;
                 sb.append(B32[idx]);
             }
         }
-        if (bitsLeft > 0) {
-            final int idx = (buffer << (5 - bitsLeft)) & 0x1F;
+
+        if (bitsLeft > ZERO) {
+            final int idx = (buffer << (FIVE - bitsLeft)) & 0x1F;
             sb.append(B32[idx]);
         }
+
         return sb.toString();
     }
 
     private static byte[] base32Decode(final String base32) {
-        final String s = (base32 == null) ? "" : base32.trim().replace("=", "").toUpperCase(Locale.ROOT);
-        int buffer = 0;
-        int bitsLeft = 0;
+        final String s = (base32 == null) ? EMPTY : base32.trim().replace("=", EMPTY).toUpperCase(Locale.ROOT);
+        int buffer = ZERO;
+        int bitsLeft = ZERO;
 
-        final byte[] out = new byte[(s.length() * 5) / 8];
-        int outPos = 0;
+        final byte[] out = new byte[(s.length() * FIVE) / EIGHT];
+        int outPos = ZERO;
 
-        for (int i = 0; i < s.length(); i++) {
+        for (int i = ZERO; i < s.length(); i++) {
             final char c = s.charAt(i);
-            final int val = (c < 256) ? B32_INV[c] : -1;
-            if (val < 0) continue;
+            final int val = (c < 256) ? B32_INV[c] : NEG_ONE;
+            if (val < ZERO) continue;
 
-            buffer = (buffer << 5) | val;
-            bitsLeft += 5;
+            buffer = (buffer << FIVE) | val;
+            bitsLeft += FIVE;
 
-            if (bitsLeft >= 8) {
-                out[outPos++] = (byte) ((buffer >> (bitsLeft - 8)) & 0xFF);
-                bitsLeft -= 8;
+            if (bitsLeft >= EIGHT) {
+                out[outPos++] = (byte) ((buffer >> (bitsLeft - EIGHT)) & BYTE_MASK);
+                bitsLeft -= EIGHT;
             }
         }
 
         if (outPos == out.length) return out;
 
         final byte[] trimmed = new byte[outPos];
-        System.arraycopy(out, 0, trimmed, 0, outPos);
+        System.arraycopy(out, ZERO, trimmed, ZERO, outPos);
         return trimmed;
     }
 
     private static String urlEncode(final String s) {
-        if (s == null) return "";
+        if (s == null) return EMPTY;
         return java.net.URLEncoder.encode(s, StandardCharsets.UTF_8);
     }
 }

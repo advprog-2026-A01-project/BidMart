@@ -74,16 +74,26 @@ public class AdminRbacController {
     @PutMapping("/roles/{role}/permissions")
     @RequiresPermission("rbac:write")
     @Transactional
-    public ResponseEntity<?> setRolePerms(@PathVariable("role") final String role, @RequestBody final SetRolePerms body) throws Exception {
-        if (!rbacRepository.roleExists(role)) return ResponseEntity.badRequest().body(Map.of(ERROR_KEY, "role_not_found"));
-        final List<String> perms = body.permissions() == null ? List.of() : body.permissions();
+    public ResponseEntity<?> setRolePerms(
+            @PathVariable("role") final String role,
+            @RequestBody final SetRolePerms body
+    ) throws Exception {
+        if (!rbacRepository.roleExists(role)) {
+            return ResponseEntity.badRequest().body(Map.of(ERROR_KEY, "role_not_found"));
+        }
+
+        final List<String> perms = (body == null || body.permissions() == null) ? List.of() : body.permissions();
         rbacRepository.setRolePermissions(role, perms);
 
         final String payload = objectMapper.writeValueAsString(Map.of(
                 "role", role,
                 "permissions", perms
         ));
-        outboxRepository.append("RolePermissionsChanged", "Role", role, payload, Instant.now(clockHolder.clock()));
+
+        outboxRepository.append(
+                new OutboxRepository.OutboxEvent("RolePermissionsChanged", "Role", role, payload),
+                Instant.now(clockHolder.clock())
+        );
 
         return ResponseEntity.ok(Map.of("ok", true));
     }

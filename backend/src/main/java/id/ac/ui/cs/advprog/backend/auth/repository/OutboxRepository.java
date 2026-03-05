@@ -17,24 +17,25 @@ public class OutboxRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    public record OutboxEvent(String eventType, String aggregateType, String aggregateId, String payloadJson) {}
+
     private static OffsetDateTime odt(final Instant t) {
         return OffsetDateTime.ofInstant(t, ZoneOffset.UTC);
     }
 
-    public UUID append(
-            final String eventType,
-            final String aggregateType,
-            final String aggregateId,
-            final String payloadJson,
-            final Instant now
-    ) {
+    public UUID append(final OutboxEvent event, final Instant now) {
         final UUID id = UUID.randomUUID();
         jdbcTemplate.update(
                 """
                 INSERT INTO app_outbox_events(id, event_type, aggregate_type, aggregate_id, payload_json, created_at, published_at)
                 VALUES (?, ?, ?, ?, ?, ?, NULL)
                 """,
-                id, eventType, aggregateType, aggregateId, payloadJson, odt(now)
+                id,
+                event.eventType(),
+                event.aggregateType(),
+                event.aggregateId(),
+                event.payloadJson(),
+                odt(now)
         );
         return id;
     }
