@@ -35,10 +35,17 @@ class AuthSessionLimitRevokeOldestIT {
 
     @Test
     void second_login_revokes_oldest_session() throws Exception {
-        mvc.perform(post("/api/auth/register")
+        final String regBody = mvc.perform(post("/api/auth/register")
                         .contentType(APPLICATION_JSON)
                         .content(om.writeValueAsString(new Cred(USER, "p"))))
-                .andExpect(status().isCreated());
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        final String verifyToken = om.readTree(regBody).get("verificationToken").asText();
+        mvc.perform(post("/api/auth/verify-email")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"token\":\"" + verifyToken + "\"}"))
+                .andExpect(status().isOk());
 
         final String login1 = mvc.perform(post("/api/auth/login")
                         .contentType(APPLICATION_JSON)

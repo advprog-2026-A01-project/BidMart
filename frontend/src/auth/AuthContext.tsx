@@ -95,7 +95,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
             const res = await AuthApi.login(username, password)
 
-            if ('mfaRequired' in res && res.mfaRequired) {
+            // TS-friendly union narrowing
+            if (!('accessToken' in res)) {
                 setPendingMfa({
                     challengeId: res.challengeId,
                     method: res.method,

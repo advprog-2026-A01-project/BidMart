@@ -532,10 +532,35 @@ export function AccountPanel() {
     )
 }
 
-const card: CSSProperties = { border: '1px solid #333', borderRadius: 12, padding: 14 }
-const subcard: CSSProperties = { border: '1px solid #444', borderRadius: 12, padding: 12, marginTop: 12 }
-const tabBtn: CSSProperties = { padding: '6px 10px', borderRadius: 10, border: '1px solid #333' }
-const activeTab: CSSProperties = { ...tabBtn, fontWeight: 700, background: '#222' }
+const card: CSSProperties = {
+    border: '1px solid var(--border)',
+    borderRadius: 16,
+    padding: 16,
+    background: '#fff',
+    boxShadow: 'var(--shadow)',
+}
+
+const subcard: CSSProperties = {
+    border: '1px solid var(--border)',
+    borderRadius: 16,
+    padding: 14,
+    marginTop: 12,
+    background: 'var(--bg-subtle)',
+}
+
+const tabBtn: CSSProperties = {
+    padding: '8px 12px',
+    borderRadius: 999,
+    border: '1px solid var(--border)',
+    background: '#fff',
+}
+
+const activeTab: CSSProperties = {
+    ...tabBtn,
+    fontWeight: 800,
+    borderColor: 'var(--ebay-blue)',
+    background: 'rgba(8, 106, 244, 0.08)',
+}
 const th: CSSProperties = { borderBottom: '1px solid #ccc', padding: 6, textAlign: 'left' }
 const td: CSSProperties = { borderBottom: '1px solid #eee', padding: 6, verticalAlign: 'top' }
 

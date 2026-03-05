@@ -33,10 +33,19 @@ class AuthControllerIT {
         final String username = "user1";
         final String password = "pass1";
 
-        mvc.perform(post("/api/auth/register")
+        final String regBody = mvc.perform(post("/api/auth/register")
                         .contentType(APPLICATION_JSON)
                         .content(om.writeValueAsString(new Cred(username, password))))
                 .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.ok").value(true))
+                .andExpect(jsonPath("$.verificationToken").isString())
+                .andReturn().getResponse().getContentAsString();
+
+        final String verifyToken = om.readTree(regBody).get("verificationToken").asText();
+        mvc.perform(post("/api/auth/verify-email")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"token\":\"" + verifyToken + "\"}"))
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.ok").value(true));
 
         final String loginBody = mvc.perform(post("/api/auth/login")
@@ -66,10 +75,17 @@ class AuthControllerIT {
 
     @Test
     void login_wrong_password_returns_401() throws Exception {
-        mvc.perform(post("/api/auth/register")
+        final String regBody = mvc.perform(post("/api/auth/register")
                         .contentType(APPLICATION_JSON)
                         .content(om.writeValueAsString(new Cred("user2", "pass2"))))
-                .andExpect(status().isCreated());
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        final String verifyToken = om.readTree(regBody).get("verificationToken").asText();
+        mvc.perform(post("/api/auth/verify-email")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"token\":\"" + verifyToken + "\"}"))
+                .andExpect(status().isOk());
 
         mvc.perform(post("/api/auth/login")
                         .contentType(APPLICATION_JSON)
@@ -85,10 +101,17 @@ class AuthControllerIT {
         final String username = "user3";
         final String password = "pass3";
 
-        mvc.perform(post("/api/auth/register")
+        final String regBody = mvc.perform(post("/api/auth/register")
                         .contentType(APPLICATION_JSON)
                         .content(om.writeValueAsString(new Cred(username, password))))
-                .andExpect(status().isCreated());
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        final String verifyToken = om.readTree(regBody).get("verificationToken").asText();
+        mvc.perform(post("/api/auth/verify-email")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"token\":\"" + verifyToken + "\"}"))
+                .andExpect(status().isOk());
 
         final String loginBody = mvc.perform(post("/api/auth/login")
                         .contentType(APPLICATION_JSON)
