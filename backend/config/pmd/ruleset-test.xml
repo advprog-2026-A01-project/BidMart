@@ -6,9 +6,7 @@
 
   <description>PMD rules for test source set.</description>
 
-  <!-- Biasanya test lebih fokus ke testing/best practices -->
-  <rule ref="category/java/testing.xml"/>
   <rule ref="category/java/bestpractices.xml"/>
+  <rule ref="category/java/errorprone.xml"/>
 
-  <!-- Kalau mau lebih longgar untuk test, bisa exclude rule tertentu di sini -->
 </ruleset>
