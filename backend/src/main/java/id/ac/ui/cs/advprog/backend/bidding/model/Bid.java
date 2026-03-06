@@ -4,10 +4,10 @@ import java.time.LocalDateTime;
 
 public class Bid {
 
-    private Long auctionId;
-    private Long bidderId;
-    private Double amount;
-    private LocalDateTime time;
+    private final Long auctionId;
+    private final Long bidderId;
+    private final Double amount;
+    private final LocalDateTime time;
 
     public Bid(Long auctionId, Long bidderId, Double amount) {
         this.auctionId = auctionId;
@@ -30,5 +30,17 @@ public class Bid {
 
     public LocalDateTime getTime() {
         return time;
+    }
+
+    public boolean isFromBidder(Long bidderId) {
+        return this.bidderId.equals(bidderId);
+    }
+
+    public boolean isForAuction(Long auctionId) {
+        return this.auctionId.equals(auctionId);
+    }
+
+    public boolean isHigherThanAmount(Double amount) {
+        return this.amount > amount;
     }
 }

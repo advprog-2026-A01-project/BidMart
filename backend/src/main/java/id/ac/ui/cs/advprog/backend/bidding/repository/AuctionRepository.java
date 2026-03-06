@@ -9,7 +9,7 @@ import java.util.Map;
 @Repository
 public class AuctionRepository {
 
-    private Map<Long, Auction> auctions = new HashMap<>();
+    private final Map<Long, Auction> auctions = new HashMap<>();
 
     public AuctionRepository() {
         auctions.put(1L, new Auction(1L, 10000.0, true));

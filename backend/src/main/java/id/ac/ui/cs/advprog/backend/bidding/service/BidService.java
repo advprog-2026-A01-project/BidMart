@@ -24,22 +24,22 @@ public class BidService {
         Auction auction = auctionRepository.findById(auctionId);
 
         if (auction == null) {
-            throw new RuntimeException("Auction not found");
+            throw new IllegalArgumentException("Auction not found");
         }
 
         if (!auction.isActive()) {
-            throw new RuntimeException("Auction not active");
+            throw new IllegalArgumentException("Auction not active");
         }
 
         if (amount <= auction.getCurrentPrice()) {
-            throw new RuntimeException("Bid must be higher than current price");
+            throw new IllegalArgumentException("Bid must be higher than current price");
         }
 
         Bid bid = new Bid(auctionId, bidderId, amount);
 
         bidRepository.save(bid);
 
-        auction.setCurrentPrice(amount);
+        auction.updatePrice(amount);
         auctionRepository.save(auction);
 
         return bid;

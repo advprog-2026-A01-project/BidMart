@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 @Repository
 public class BidRepository {
 
-    private List<Bid> bids = new ArrayList<>();
+    private final List<Bid> bids = new ArrayList<>();
 
     public void save(Bid bid) {
         bids.add(bid);

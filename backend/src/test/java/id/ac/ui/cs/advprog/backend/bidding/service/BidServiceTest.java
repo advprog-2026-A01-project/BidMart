@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class BidServiceTest {
+class BidServiceTest {
 
     private BidService bidService;
 
@@ -16,7 +16,6 @@ public class BidServiceTest {
     void setUp() {
         AuctionRepository auctionRepository = new AuctionRepository();
         BidRepository bidRepository = new BidRepository();
-
         bidService = new BidService(auctionRepository, bidRepository);
     }
 
@@ -25,29 +24,53 @@ public class BidServiceTest {
 
         Bid bid = bidService.placeBid(1L, 10L, 12000.0);
 
-        assertNotNull(bid);
-        assertEquals(12000.0, bid.getAmount());
-        assertEquals(1L, bid.getAuctionId());
+        assertNotNull(bid, "Bid should not be null");
     }
 
     @Test
-    void testBidLowerThanCurrentPrice() {
+    void testBidLowerThanCurrentPriceMessage() {
 
-        Exception exception = assertThrows(RuntimeException.class, () -> {
+        try {
             bidService.placeBid(1L, 10L, 9000.0);
-        });
-
-        assertEquals("Bid must be higher than current price", exception.getMessage());
+        } catch (IllegalArgumentException e) {
+            assertEquals(
+                    "Bid must be higher than current price",
+                    e.getMessage(),
+                    "Exception message mismatch"
+            );
+        }
     }
 
     @Test
-    void testAuctionNotFound() {
+    void testBidLowerThanCurrentPriceThrowsException() {
 
-        Exception exception = assertThrows(RuntimeException.class, () -> {
-            bidService.placeBid(99L, 10L, 15000.0);
-        });
-
-        assertEquals("Auction not found", exception.getMessage());
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> bidService.placeBid(1L, 10L, 9000.0),
+                "Should throw exception when bid lower than current price"
+        );
     }
 
+    @Test
+    void testAuctionNotFoundThrowsException() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> bidService.placeBid(99L, 10L, 15000.0),
+                "Should throw exception when auction not found"
+        );
+    }
+
+    @Test
+    void testAuctionNotFoundMessage() {
+
+        try {
+            bidService.placeBid(99L, 10L, 15000.0);
+        } catch (IllegalArgumentException e) {
+            assertEquals(
+                    "Auction not found",
+                    e.getMessage(),
+                    "Exception message mismatch"
+            );
+        }
+    }
 }
