@@ -1,0 +1,1 @@
+web: cd backend && java -Dserver.port=$PORT -jar $(ls build/libs/*.jar | head -n 1)
