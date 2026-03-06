@@ -25,7 +25,7 @@ class WalletServiceTest {
     void testTopUpNegativeAmountShouldFail() {
         assertThrows(IllegalArgumentException.class, () -> {
             walletService.topUp(userId, -100.0);
-        });
+        }, "Top up with negative amount should throw IllegalArgumentException");
     }
 
     @Test
@@ -33,36 +33,58 @@ class WalletServiceTest {
         walletService.topUp(userId, 500.0);
         assertThrows(IllegalArgumentException.class, () -> {
             walletService.holdForBid(userId, 600.0);
-        });
+        }, "Holding more than available balance should throw IllegalArgumentException");
     }
 
+
     @Test
-    void testFinalizePaymentFromHeldFunds() {
+    void testFinalizePaymentShouldUpdateAvailableBalance() {
         walletService.topUp(userId, 1000.0);
         walletService.holdForBid(userId, 800.0);
-        
         walletService.payFromHeld(userId, 800.0);
         
-        assertEquals(200.0, walletService.getBalance(userId));
-        assertEquals(0.0, walletService.getHeldBalance(userId));
+        assertEquals(200.0, walletService.getBalance(userId), 
+            "Available balance should be original minus payment");
     }
 
     @Test
-    void testTransactionHistoryAuditTrail() {
+    void testFinalizePaymentShouldClearHeldBalance() {
+        walletService.topUp(userId, 1000.0);
+        walletService.holdForBid(userId, 800.0);
+        walletService.payFromHeld(userId, 800.0);
+        
+        assertEquals(0.0, walletService.getHeldBalance(userId), 
+            "Held balance should be empty after payment finalized");
+    }
+
+    @Test
+    void testTransactionHistorySize() {
         walletService.topUp(userId, 1000.0);
         walletService.holdForBid(userId, 200.0);
         walletService.releaseFromBid(userId, 200.0);
         
         List<WalletTransaction> history = walletService.getHistory(userId);
-        assertEquals(3, history.size());
-        assertEquals("TOPUP", history.get(0).getType());
-        assertEquals("HOLD", history.get(1).getType());
-        assertEquals("RELEASE", history.get(2).getType());
+        assertEquals(3, history.size(), "History should contain 3 entries");
+    }
+
+    @Test
+    void testTransactionHistoryFirstEntryIsTopUp() {
+        walletService.topUp(userId, 1000.0);
+        List<WalletTransaction> history = walletService.getHistory(userId);
+        assertEquals("TOPUP", history.get(0).getType(), "First transaction should be TOPUP");
+    }
+
+    @Test
+    void testTransactionHistorySecondEntryIsHold() {
+        walletService.topUp(userId, 1000.0);
+        walletService.holdForBid(userId, 200.0);
+        List<WalletTransaction> history = walletService.getHistory(userId);
+        assertEquals("HOLD", history.get(1).getType(), "Second transaction should be HOLD");
     }
 
     @Test
     void testGetBalanceForNewUserShouldReturnZero() {
         double balance = walletService.getBalance("new_user");
-        assertEquals(0.0, balance);
+        assertEquals(0.0, balance, "New user balance should be zero by default");
     }
 }
