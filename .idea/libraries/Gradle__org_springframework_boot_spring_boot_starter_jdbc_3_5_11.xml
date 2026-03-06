@@ -4,7 +4,11 @@
     <CLASSES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-starter-jdbc/3.5.11/3ce801963caadf6eb29abd68f5a0fe50c9bfe211/spring-boot-starter-jdbc-3.5.11.jar!/" />
     </CLASSES>
-    <JAVADOC />
-    <SOURCES />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-starter-jdbc/3.5.11/41c46d1e40128553e7f3a708a359d72e8e37c1fd/spring-boot-starter-jdbc-3.5.11-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-starter-jdbc/3.5.11/41c46d1e40128553e7f3a708a359d72e8e37c1fd/spring-boot-starter-jdbc-3.5.11-sources.jar!/" />
+    </SOURCES>
   </library>
 </component>
