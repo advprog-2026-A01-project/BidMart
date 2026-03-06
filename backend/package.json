@@ -1,0 +1,17 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/advprog-2026-A01-project/BidMart.git"
+  },
+  "private": true,
+  "dependencies": {
+    "vite": "^7.3.1"
+  }
+}
