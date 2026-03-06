@@ -76,9 +76,6 @@ public class SecurityConfig {
                         // 👇 BERIKAN IZIN AKSES PUBLIK UNTUK FILE FRONTEND 👇
                         .requestMatchers("/", "/index.html", "/assets/**", "/vite.svg").permitAll()
 
-                        // Endpoint API kamu yang lain biarkan seperti semula
-                        .requestMatchers("/api/auth/**").permitAll()
-
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(tokenAuthFilter, UsernamePasswordAuthenticationFilter.class)
