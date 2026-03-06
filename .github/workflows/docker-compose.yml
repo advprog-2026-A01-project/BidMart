@@ -41,10 +41,15 @@ jobs:
       - name: Build & start stack (dummy deploy)
         run: |
           docker compose up -d --build
-          # smoke check backend
-          curl -fsS http://localhost:8080/api/db/ping || (docker compose logs backend && exit 1)
+          
+          echo "Waiting for backend to start..."
+          # Beri jeda 10 detik, lalu coba curl sampai 10 kali tiap 5 detik jika gagal
+          sleep 10
+          curl -fsS --retry 10 --retry-delay 5 --retry-connrefused http://localhost:8080/api/db/ping || (docker compose logs backend && exit 1)
+          
           # smoke check frontend
-          curl -fsS http://localhost:5173/ || (docker compose logs frontend && exit 1)
+          curl -fsS --retry 5 --retry-delay 5 --retry-connrefused http://localhost:5173/ || (docker compose logs frontend && exit 1)
+          
           docker compose ps
           docker compose down
 
