@@ -1,9 +1,20 @@
 # ---- build stage ----
-# Kebutuhan untuk Github Actions nanti (Kalo tidak perlu bisa diapus)
-FROM gradle:8.7-jdk21 AS build
+FROM eclipse-temurin:21-jdk AS build
 WORKDIR /app
-COPY . .
-RUN gradle clean bootJar --no-daemon
+
+# 1. Copy file wrapper & config gradle dulu (berguna untuk docker caching)
+COPY gradlew .
+COPY gradle/ gradle/
+COPY build.gradle.kts settings.gradle.kts gradle.properties* ./
+
+# 2. Beri permission execute ke gradlew
+RUN chmod +x gradlew
+
+# 3. Copy source code backend
+COPY src/ src/
+
+# 4. Build JAR menggunakan wrapper
+RUN ./gradlew clean bootJar --no-daemon
 
 # ---- runtime stage ----
 FROM eclipse-temurin:21-jre
