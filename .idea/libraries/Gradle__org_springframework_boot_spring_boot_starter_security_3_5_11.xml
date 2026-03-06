@@ -4,11 +4,7 @@
     <CLASSES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-starter-security/3.5.11/db8b6b7951883dea3ce7404f20d6816104cedd4e/spring-boot-starter-security-3.5.11.jar!/" />
     </CLASSES>
-    <JAVADOC>
-      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-starter-security/3.5.11/db8b6b7951883dea3ce7404f20d6816104cedd4e/spring-boot-starter-security-3.5.11-javadoc.jar!/" />
-    </JAVADOC>
-    <SOURCES>
-      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-starter-security/3.5.11/db8b6b7951883dea3ce7404f20d6816104cedd4e/spring-boot-starter-security-3.5.11-sources.jar!/" />
-    </SOURCES>
+    <JAVADOC />
+    <SOURCES />
   </library>
 </component>

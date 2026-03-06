@@ -4,11 +4,7 @@
     <CLASSES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.checkerframework/checker-qual/3.52.0/9c17f496846ab1fca8975c6a50ceac0b3bbe63f0/checker-qual-3.52.0.jar!/" />
     </CLASSES>
-    <JAVADOC>
-      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.checkerframework/checker-qual/3.52.0/443f4a80da40d1a1d13c4a74332f7ad483ad7c8d/checker-qual-3.52.0-javadoc.jar!/" />
-    </JAVADOC>
-    <SOURCES>
-      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.checkerframework/checker-qual/3.52.0/a22698c8be9098bff177d6057ed3fade3b7d243e/checker-qual-3.52.0-sources.jar!/" />
-    </SOURCES>
+    <JAVADOC />
+    <SOURCES />
   </library>
 </component>
