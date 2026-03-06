@@ -1,20 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <module external.linked.project.id="backend:main" external.linked.project.path="$MODULE_DIR$/../../backend" external.root.project.path="$MODULE_DIR$/../../backend" external.system.id="GRADLE" external.system.module.group="id.ac.ui.cs.advprog" external.system.module.type="sourceSet" external.system.module.version="0.0.1-SNAPSHOT" type="JAVA_MODULE" version="4">
-  <component name="AdditionalModuleElements">
-    <content url="file://$MODULE_DIR$/../../backend/build/generated/sources/annotationProcessor/java/main">
-      <sourceFolder url="file://$MODULE_DIR$/../../backend/build/generated/sources/annotationProcessor/java/main" isTestSource="false" generated="true" />
-    </content>
-  </component>
   <component name="FacetManager">
     <facet external-system-id="GRADLE" type="web" name="Web">
       <configuration>
         <webroots />
-        <sourceRoots>
-          <root url="file://$MODULE_DIR$/../../backend/build/generated/sources/annotationProcessor/java/main" />
-          <root url="file://$MODULE_DIR$/../../backend/build/generated/sources/annotationProcessor/java/main" />
-          <root url="file://$MODULE_DIR$/../../backend/src/main/java" />
-          <root url="file://$MODULE_DIR$/../../backend/src/main/resources" />
-        </sourceRoots>
       </configuration>
     </facet>
   </component>
