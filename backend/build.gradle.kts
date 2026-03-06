@@ -1,4 +1,6 @@
 import org.gradle.api.plugins.quality.Pmd
+import org.gradle.api.tasks.Exec
+import org.gradle.api.tasks.Copy
 
 plugins {
     java
@@ -74,4 +76,31 @@ tasks.named<Pmd>("pmdMain") {
 
 tasks.named<Pmd>("pmdTest") {
     ruleSetFiles = files("$rootDir/config/pmd/ruleset-test.xml")
+}
+
+val frontendDir = file("../frontend")
+
+val npmInstall by tasks.registering(Exec::class) {
+    workingDir = frontendDir
+    commandLine("npm", "ci")
+}
+
+val npmBuild by tasks.registering(Exec::class) {
+    workingDir = frontendDir
+    dependsOn(npmInstall)
+    commandLine("npm", "run", "build")
+}
+
+val copyFrontendToStatic by tasks.registering(Copy::class) {
+    dependsOn(npmBuild)
+    from(file("$frontendDir/dist"))
+    into(file("$projectDir/src/main/resources/static"))
+}
+
+tasks.named("processResources") {
+    dependsOn(copyFrontendToStatic)
+}
+
+tasks.named("bootJar") {
+    dependsOn(copyFrontendToStatic)
 }
