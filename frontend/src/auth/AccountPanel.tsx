@@ -23,8 +23,8 @@ export function AccountPanel() {
     const [authMode, setAuthMode] = useState<AuthMode>('login')
 
     // Auth fields
-    const [username, setUsername] = useState('demo')
-    const [password, setPassword] = useState('demo')
+    const [username, setUsername] = useState('')
+    const [password, setPassword] = useState('')
     const [requestedRole, setRequestedRole] = useState<'BUYER' | 'SELLER'>('BUYER')
 
     const [verifyToken, setVerifyToken] = useState('')

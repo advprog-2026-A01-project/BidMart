@@ -9,6 +9,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import id.ac.ui.cs.advprog.backend.auth.model.Role;
 import id.ac.ui.cs.advprog.backend.auth.repository.UserAuthRepository;
 
+// Ini untuk seeding admin.
 @Configuration
 @Profile("dev")
 public class DevAdminSeedConfig {
