@@ -11,6 +11,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+// Kebutuhan mailing
+import org.springframework.mail.MailException;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
+
 @Service
 public class MfaChallengeService {
 
@@ -23,14 +28,19 @@ public class MfaChallengeService {
     private final PasswordEncoder passwordEncoder;
     private final long ttlSeconds;
 
+    private final JavaMailSender mailSender;
+
+
     public MfaChallengeService(
             final MfaChallengeRepository mfaChallengeRepository,
             final PasswordEncoder passwordEncoder,
-            final AuthProperties props
+            final AuthProperties props,
+            final JavaMailSender mailSender
     ) {
         this.mfaChallengeRepository = mfaChallengeRepository;
         this.passwordEncoder = passwordEncoder;
         this.ttlSeconds = props.getMfaChallengeTtlSeconds();
+        this.mailSender = mailSender;
     }
 
     public AuthLoginService.LoginResult.MfaRequired createChallenge(
@@ -52,6 +62,16 @@ public class MfaChallengeService {
         final String otp = generate6DigitCode();
         final String hash = passwordEncoder.encode(otp);
         final UUID id = mfaChallengeRepository.createEmailChallenge(user.id(), hash, expires);
+
+        try {
+            final SimpleMailMessage msg = new SimpleMailMessage();
+            msg.setTo(username);
+            msg.setSubject("BidMart OTP");
+            msg.setText("Your login OTP is: " + otp);
+            mailSender.send(msg);
+        } catch (MailException ex) {
+            log.warn("Failed to send OTP email to {}", username, ex);
+        }
 
         log.info("DEV MFA EMAIL code for {}: {} (challengeId={})", username, otp, id);
         return new AuthLoginService.LoginResult.MfaRequired(id, METHOD_EMAIL, ttlSeconds, otp);

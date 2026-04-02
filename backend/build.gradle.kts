@@ -46,6 +46,9 @@ dependencies {
 
     // add: in-memory DB for tests
     testRuntimeOnly("com.h2database:h2")
+
+    // Untuk mail ngirim kode verifikasi
+    implementation("org.springframework.boot:spring-boot-starter-mail")
 }
 
 tasks.withType<Test> {

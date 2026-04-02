@@ -26,6 +26,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 class AuthLoginServiceTest {
@@ -34,6 +35,7 @@ class AuthLoginServiceTest {
     private SessionRepository sessionRepository;
     private PasswordEncoder passwordEncoder;
     private MfaChallengeRepository mfaChallengeRepository;
+    private JavaMailSender mailSender;
 
     private Clock clock;
     private AuthLoginService loginService;
@@ -44,6 +46,7 @@ class AuthLoginServiceTest {
         sessionRepository = Mockito.mock(SessionRepository.class);
         passwordEncoder = Mockito.mock(PasswordEncoder.class);
         mfaChallengeRepository = Mockito.mock(MfaChallengeRepository.class);
+        mailSender = Mockito.mock(JavaMailSender.class);
 
         final AuthProperties props = new AuthProperties();
         props.setMaxSessionsPerUser(10);
@@ -59,7 +62,7 @@ class AuthLoginServiceTest {
         final SessionLimitService limit = new SessionLimitService(sessionRepository, 10, AuthProperties.SessionOverflowPolicy.REVOKE_OLDEST);
         final AuthTokenService token = new AuthTokenService(sessionRepository, props, clock);
         final AuthMfaManagementService mfaManage = new AuthMfaManagementService(userAuthRepository, clock);
-        final MfaChallengeService challengeService = new MfaChallengeService(mfaChallengeRepository, passwordEncoder, props);
+        final MfaChallengeService challengeService = new MfaChallengeService(mfaChallengeRepository, passwordEncoder, props, mailSender);
         final MfaVerificationService verifyService = new MfaVerificationService(mfaChallengeRepository, userAuthRepository, passwordEncoder, props);
 
         loginService = new AuthLoginService(clock, authenticator, limit, token, challengeService, verifyService, mfaManage);

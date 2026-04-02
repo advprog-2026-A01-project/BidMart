@@ -1,18 +1,25 @@
 package id.ac.ui.cs.advprog.backend.auth.service;
 
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.UUID;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import id.ac.ui.cs.advprog.backend.auth.model.AuthException;
 import id.ac.ui.cs.advprog.backend.auth.model.AuthProperties;
 import id.ac.ui.cs.advprog.backend.auth.model.Role;
 import id.ac.ui.cs.advprog.backend.auth.repository.EmailVerificationRepository;
 import id.ac.ui.cs.advprog.backend.auth.repository.UserAuthRepository;
-import java.time.Clock;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.UUID;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+
+// Kebutuhan mailing
+import org.springframework.mail.MailException;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 
 @Service
 public class AuthRegistrationService {
@@ -22,6 +29,7 @@ public class AuthRegistrationService {
     private final UserAuthRepository userAuthRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailVerificationRepository emailVerificationRepository;
+    private final JavaMailSender mailSender;
     private final AuthProperties props;
     private final Clock clock;
 
@@ -30,21 +38,27 @@ public class AuthRegistrationService {
             final PasswordEncoder passwordEncoder,
             final EmailVerificationRepository emailVerificationRepository,
             final AuthProperties props,
-            final Clock clock
+            final Clock clock,
+            final JavaMailSender mailSender
     ) {
         this.userAuthRepository = userAuthRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailVerificationRepository = emailVerificationRepository;
         this.props = props;
         this.clock = clock;
+        this.mailSender = mailSender;
     }
 
     @Transactional
     public UUID register(final String username, final String password, final Role role) {
-        if (userAuthRepository.findByUsername(username).isPresent()) throw AuthException.usernameTaken();
+        if (userAuthRepository.findByUsername(username).isPresent()) {
+            throw AuthException.usernameTaken();
+        }
 
         final Role safeRole = (role == null) ? Role.BUYER : role;
-        if (safeRole == Role.ADMIN) throw new AuthException(HttpStatus.BAD_REQUEST, "invalid_role");
+        if (safeRole == Role.ADMIN) {
+            throw new AuthException(HttpStatus.BAD_REQUEST, "invalid_role");
+        }
 
         final String hash = passwordEncoder.encode(password == null ? "" : password);
         final long userId = userAuthRepository.insert(username, hash, safeRole);
@@ -52,6 +66,16 @@ public class AuthRegistrationService {
         final Instant now = Instant.now(clock);
         final Duration ttl = Duration.ofMinutes(props.getEmailVerifyTtlMinutes());
         final UUID token = emailVerificationRepository.createToken(userId, now, now.plus(ttl));
+
+        try {
+            final SimpleMailMessage msg = new SimpleMailMessage();
+            msg.setTo(username);
+            msg.setSubject("BidMart Verification");
+            msg.setText("Verification token: " + token);
+            mailSender.send(msg);
+        } catch (MailException ex) {
+            log.warn("Failed to send verification email to {}", username, ex);
+        }
 
         log.info("DEV EMAIL VERIFY token for {}: {}", username, token);
         return token;
