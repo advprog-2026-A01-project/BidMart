@@ -1,20 +1,18 @@
 package id.ac.ui.cs.advprog.backend.auth.service;
 
-import id.ac.ui.cs.advprog.backend.auth.model.AuthException;
-import id.ac.ui.cs.advprog.backend.auth.model.AuthProperties;
-import id.ac.ui.cs.advprog.backend.auth.repository.MfaChallengeRepository;
-import id.ac.ui.cs.advprog.backend.auth.repository.UserAuthRepository;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.UUID;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-// Kebutuhan mailing
-import org.springframework.mail.MailException;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import id.ac.ui.cs.advprog.backend.auth.model.AuthException;
+import id.ac.ui.cs.advprog.backend.auth.model.AuthProperties;
+import id.ac.ui.cs.advprog.backend.auth.model.Role;
+import id.ac.ui.cs.advprog.backend.auth.repository.MfaChallengeRepository;
+import id.ac.ui.cs.advprog.backend.auth.repository.UserAuthRepository;
 
 @Service
 public class MfaChallengeService {
@@ -27,20 +25,20 @@ public class MfaChallengeService {
     private final MfaChallengeRepository mfaChallengeRepository;
     private final PasswordEncoder passwordEncoder;
     private final long ttlSeconds;
-
-    private final JavaMailSender mailSender;
-
+    private final EmailService emailService;
+    private final AuthProperties props;
 
     public MfaChallengeService(
             final MfaChallengeRepository mfaChallengeRepository,
             final PasswordEncoder passwordEncoder,
             final AuthProperties props,
-            final JavaMailSender mailSender
+            final EmailService emailService
     ) {
         this.mfaChallengeRepository = mfaChallengeRepository;
         this.passwordEncoder = passwordEncoder;
         this.ttlSeconds = props.getMfaChallengeTtlSeconds();
-        this.mailSender = mailSender;
+        this.emailService = emailService;
+        this.props = props;
     }
 
     public AuthLoginService.LoginResult.MfaRequired createChallenge(
@@ -48,7 +46,8 @@ public class MfaChallengeService {
             final String username,
             final Instant now
     ) {
-        final String method = normalizeMethod(user.mfaMethod());
+        // BUYER / SELLER selalu dipaksa ke EMAIL OTP demo
+        final String method = shouldUseDemoCode(user) ? METHOD_EMAIL : normalizeMethod(user.mfaMethod());
         final Instant expires = now.plusSeconds(ttlSeconds);
 
         if (METHOD_TOTP.equals(method)) {
@@ -59,22 +58,18 @@ public class MfaChallengeService {
             return new AuthLoginService.LoginResult.MfaRequired(id, METHOD_TOTP, ttlSeconds, null);
         }
 
-        final String otp = generate6DigitCode();
+        final String otp = shouldUseDemoCode(user) ? props.getDemoEmailOtpCode() : generate6DigitCode();
         final String hash = passwordEncoder.encode(otp);
         final UUID id = mfaChallengeRepository.createEmailChallenge(user.id(), hash, expires);
 
-        try {
-            final SimpleMailMessage msg = new SimpleMailMessage();
-            msg.setTo(username);
-            msg.setSubject("BidMart OTP");
-            msg.setText("Your login OTP is: " + otp);
-            mailSender.send(msg);
-        } catch (MailException ex) {
-            log.warn("Failed to send OTP email to {}", username, ex);
-        }
-
         log.info("DEV MFA EMAIL code for {}: {} (challengeId={})", username, otp, id);
-        return new AuthLoginService.LoginResult.MfaRequired(id, METHOD_EMAIL, ttlSeconds, otp);
+        emailService.sendMfaOtp(username, otp);
+
+        return new AuthLoginService.LoginResult.MfaRequired(id, METHOD_EMAIL, ttlSeconds, null);
+    }
+
+    private boolean shouldUseDemoCode(final UserAuthRepository.UserRow user) {
+        return props.isDemoStaticCodesEnabled() && user.role() != null && user.role() != Role.ADMIN;
     }
 
     private static String normalizeMethod(final String raw) {

@@ -14,6 +14,10 @@ import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import id.ac.ui.cs.advprog.backend.auth.model.AuthException;
+import id.ac.ui.cs.advprog.backend.auth.model.AuthPrincipal;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 
 @RestController
 @RequestMapping("/api/admin/users")
@@ -114,4 +118,50 @@ public class AdminUserController {
 
     public record RoleUpdate(String role) {}
     public record DisableUpdate(boolean disabled) {}
+
+    @DeleteMapping("/{id}")
+    @RequiresPermission("users:write")
+    @Transactional
+    public ResponseEntity<?> deleteUser(@PathVariable("id") final long id, final Authentication authentication) throws Exception {
+        final AuthPrincipal principal = requirePrincipal(authentication);
+
+        if (principal.userId() == id) {
+            return ResponseEntity.badRequest().body(err("cannot_delete_self"));
+        }
+
+        final var targetOpt = userAdminRepository.findUserById(id);
+        if (targetOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(err("user_not_found"));
+        }
+
+        final var target = targetOpt.get();
+        if ("ADMIN".equalsIgnoreCase(target.role())) {
+            return ResponseEntity.badRequest().body(err("cannot_delete_admin"));
+        }
+
+        final int deleted = userAdminRepository.deleteUserById(id);
+        if (deleted == 0) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(err("user_not_found"));
+        }
+
+        final String payload = objectMapper.writeValueAsString(Map.of(
+                "userId", id,
+                "username", target.username(),
+                "role", target.role()
+        ));
+
+        outboxRepository.append(
+                new OutboxRepository.OutboxEvent("UserDeleted", "User", String.valueOf(id), payload),
+                Instant.now(clockHolder.clock())
+        );
+
+        return ResponseEntity.ok(Map.of("ok", true));
+    }
+
+    private static AuthPrincipal requirePrincipal(final Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof AuthPrincipal p)) {
+            throw new AuthException(HttpStatus.UNAUTHORIZED, "unauthorized");
+        }
+        return p;
+    }
 }

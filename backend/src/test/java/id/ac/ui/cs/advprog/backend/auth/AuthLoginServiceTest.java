@@ -1,8 +1,19 @@
 package id.ac.ui.cs.advprog.backend.auth;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.Optional;
+import java.util.UUID;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import org.mockito.Mockito;
 import static org.mockito.Mockito.when;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import id.ac.ui.cs.advprog.backend.auth.model.AuthException;
 import id.ac.ui.cs.advprog.backend.auth.model.AuthProperties;
@@ -13,21 +24,11 @@ import id.ac.ui.cs.advprog.backend.auth.repository.UserAuthRepository;
 import id.ac.ui.cs.advprog.backend.auth.service.AuthLoginService;
 import id.ac.ui.cs.advprog.backend.auth.service.AuthMfaManagementService;
 import id.ac.ui.cs.advprog.backend.auth.service.AuthTokenService;
+import id.ac.ui.cs.advprog.backend.auth.service.EmailService;
 import id.ac.ui.cs.advprog.backend.auth.service.MfaChallengeService;
 import id.ac.ui.cs.advprog.backend.auth.service.MfaVerificationService;
 import id.ac.ui.cs.advprog.backend.auth.service.SessionLimitService;
 import id.ac.ui.cs.advprog.backend.auth.service.UserAuthenticator;
-import java.time.Clock;
-import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.util.Optional;
-import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 class AuthLoginServiceTest {
 
@@ -35,7 +36,7 @@ class AuthLoginServiceTest {
     private SessionRepository sessionRepository;
     private PasswordEncoder passwordEncoder;
     private MfaChallengeRepository mfaChallengeRepository;
-    private JavaMailSender mailSender;
+    private EmailService emailService;
 
     private Clock clock;
     private AuthLoginService loginService;
@@ -46,7 +47,7 @@ class AuthLoginServiceTest {
         sessionRepository = Mockito.mock(SessionRepository.class);
         passwordEncoder = Mockito.mock(PasswordEncoder.class);
         mfaChallengeRepository = Mockito.mock(MfaChallengeRepository.class);
-        mailSender = Mockito.mock(JavaMailSender.class);
+        emailService = Mockito.mock(EmailService.class);
 
         final AuthProperties props = new AuthProperties();
         props.setMaxSessionsPerUser(10);
@@ -62,7 +63,7 @@ class AuthLoginServiceTest {
         final SessionLimitService limit = new SessionLimitService(sessionRepository, 10, AuthProperties.SessionOverflowPolicy.REVOKE_OLDEST);
         final AuthTokenService token = new AuthTokenService(sessionRepository, props, clock);
         final AuthMfaManagementService mfaManage = new AuthMfaManagementService(userAuthRepository, clock);
-        final MfaChallengeService challengeService = new MfaChallengeService(mfaChallengeRepository, passwordEncoder, props, mailSender);
+        final MfaChallengeService challengeService = new MfaChallengeService(mfaChallengeRepository, passwordEncoder, props, emailService);
         final MfaVerificationService verifyService = new MfaVerificationService(mfaChallengeRepository, userAuthRepository, passwordEncoder, props);
 
         loginService = new AuthLoginService(clock, authenticator, limit, token, challengeService, verifyService, mfaManage);

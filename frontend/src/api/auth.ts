@@ -68,11 +68,11 @@ export async function register(username: string, password: string, requestedRole
     })
 }
 
-export async function verifyEmail(token: string): Promise<{ ok: boolean }> {
+export async function verifyEmail(token: string, username?: string): Promise<{ ok: boolean }> {
     return apiFetch('/api/auth/verify-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token }),
+        body: JSON.stringify({ token, username }),
     })
 }
 
@@ -179,6 +179,13 @@ export async function adminDisableUser(accessToken: string, id: number, disabled
         accessToken,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ disabled }),
+    })
+}
+
+export async function adminDeleteUser(accessToken: string, id: number): Promise<{ ok: boolean }> {
+    return apiFetch(`/api/admin/users/${id}`, {
+        method: 'DELETE',
+        accessToken,
     })
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import * as Api from '../api/auth'
 import { useAuth } from './useAuth'
@@ -6,6 +6,51 @@ import './AccountPanel.css'
 
 type Tab = 'auth' | 'profile' | 'sessions' | 'admin'
 type AuthMode = 'login' | 'register'
+
+function EyeIcon({ open }: { open: boolean }) {
+    return open ? (
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+            <circle cx="12" cy="12" r="3" />
+        </svg>
+    ) : (
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 3l18 18" />
+            <path d="M10.6 10.7A3 3 0 0 0 13.4 13.5" />
+            <path d="M9.9 5.1A10.9 10.9 0 0 1 12 5c6.5 0 10 7 10 7a17.2 17.2 0 0 1-4.1 5.1" />
+            <path d="M6.7 6.7C4.2 8.3 2.7 10.8 2 12c0 0 3.5 7 10 7a9.8 9.8 0 0 0 5.3-1.5" />
+        </svg>
+    )
+}
+
+function prettyErrorMessage(raw: string | null | undefined): string {
+    const value = (raw ?? '').trim()
+
+    switch (value) {
+        case 'invalid_credentials':
+            return 'Username/email atau password salah.'
+        case 'invalid_or_expired_token':
+            return 'Kode verifikasi atau OTP tidak valid, atau sudah kedaluwarsa.'
+        case 'invalid_input':
+            return 'Input belum lengkap atau tidak valid.'
+        case 'username_taken':
+            return 'Username/email sudah terdaftar.'
+        case 'email_not_verified':
+            return 'Akun belum diverifikasi. Selesaikan verifikasi email terlebih dahulu.'
+        case 'totp_not_configured':
+            return 'TOTP belum dikonfigurasi.'
+        case 'unauthorized':
+            return 'Kamu tidak punya akses untuk melakukan aksi ini.'
+        case 'user_not_found':
+            return 'User tidak ditemukan.'
+        case 'cannot_delete_self':
+            return 'Admin tidak bisa menghapus akun sendiri.'
+        case 'cannot_delete_admin':
+            return 'Akun admin tidak boleh dihapus.'
+        default:
+            return value ? value.replaceAll('_', ' ') : 'Terjadi kesalahan. Silakan coba lagi.'
+    }
+}
 
 export function AccountPanel() {
     const {
@@ -25,12 +70,17 @@ export function AccountPanel() {
     // Auth fields
     const [username, setUsername] = useState('')
     const [password, setPassword] = useState('')
+    const [showPassword, setShowPassword] = useState(false)
     const [requestedRole, setRequestedRole] = useState<'BUYER' | 'SELLER'>('BUYER')
 
     const [verifyToken, setVerifyToken] = useState('')
     const [otp, setOtp] = useState('')
 
-    // TOTP UI state (optional: if backend supports it)
+    // Toast notification
+    const [toast, setToast] = useState<{ type: 'error'; message: string } | null>(null)
+    const didInitErrorEffect = useRef(false)
+
+    // TOTP UI state
     const [totpSecret, setTotpSecret] = useState<string | null>(null)
     const [totpUri, setTotpUri] = useState<string | null>(null)
     const [totpCode, setTotpCode] = useState('')
@@ -60,32 +110,32 @@ export function AccountPanel() {
     const [selectedRolePerms, setSelectedRolePerms] = useState<string[]>([])
     const [rbacMsg, setRbacMsg] = useState('')
 
-    // Auto-fill verify token if backend returns it
-    useEffect(() => {
-        if (lastVerificationToken) setVerifyToken(lastVerificationToken)
-    }, [lastVerificationToken])
-
     const canCall = !!accessToken
 
     async function onRegister() {
         await register(username, password, requestedRole)
-        // after register, usually you want to verify email
+        setAuthMode('register')
+        setVerifyToken('')
     }
 
     async function onVerifyEmail() {
-        await verifyEmail(verifyToken)
+        await verifyEmail(verifyToken.trim(), username)
+        setVerifyToken('')
     }
 
     async function onLogin() {
+        setOtp('')
         await login(username, password)
     }
 
     async function onVerifyOtp() {
-        await submitMfa(otp)
+        await submitMfa(otp.trim())
         setOtp('')
     }
 
-    // ===== TOTP handlers (optional) =====
+    const showVerifyBox = authMode === 'register' && !!lastVerificationToken
+    const showLoginMfaBox = authMode === 'login' && !!pendingMfa
+
     async function onTotpSetup() {
         if (!accessToken) return
         setMfaMsg('setting up TOTP...')
@@ -158,7 +208,6 @@ export function AccountPanel() {
         }
     }
 
-    // Live preview should re-attempt loading when URL changes
     useEffect(() => {
         setPhotoOk(true)
     }, [profile.photoUrl])
@@ -211,6 +260,27 @@ export function AccountPanel() {
         }
     }
 
+    async function adminDelete(id: number, username: string, role: string) {
+        if (!accessToken) return
+
+        if (role.toUpperCase() === 'ADMIN') {
+            setAdminMsg('admin user cannot be deleted')
+            return
+        }
+
+        const ok = window.confirm(`Delete user "${username}" permanently?`)
+        if (!ok) return
+
+        setAdminMsg('deleting...')
+        try {
+            await Api.adminDeleteUser(accessToken, id)
+            await loadAdminUsers()
+            setAdminMsg('deleted')
+        } catch {
+            setAdminMsg('failed')
+        }
+    }
+
     async function adminSetRole(id: number) {
         if (!accessToken) return
 
@@ -227,7 +297,6 @@ export function AccountPanel() {
         try {
             await Api.adminSetUserRole(accessToken, id, desiredRole)
 
-            // clear draft only for that user row
             setRoleDraftById(prev => {
                 const next = { ...prev }
                 delete next[id]
@@ -303,7 +372,6 @@ export function AccountPanel() {
         }
     }
 
-    // Auto-load per tab
     useEffect(() => {
         if (!accessToken) return
         if (tab === 'profile') void loadProfile()
@@ -316,6 +384,34 @@ export function AccountPanel() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [tab, accessToken])
 
+    useEffect(() => {
+        setShowPassword(false)
+        setToast(null)
+    }, [authMode])
+
+    useEffect(() => {
+        if (!didInitErrorEffect.current) {
+            didInitErrorEffect.current = true
+            return
+        }
+
+        if (!error) {
+            setToast(null)
+            return
+        }
+
+        setToast({
+            type: 'error',
+            message: prettyErrorMessage(error),
+        })
+
+        const timer = window.setTimeout(() => {
+            setToast(null)
+        }, 3500)
+
+        return () => window.clearTimeout(timer)
+    }, [error])
+
     const tabs = useMemo(() => {
         const base: { key: Tab; label: string; show: boolean }[] = [
             { key: 'auth', label: 'Auth', show: true },
@@ -325,8 +421,6 @@ export function AccountPanel() {
         ]
         return base.filter(t => t.show)
     }, [user, isAdmin])
-
-    const showVerifyBox = !!lastVerificationToken || !!verifyToken
 
     return (
         <div style={{ display: 'grid', gap: 12, maxWidth: 900, margin: '0 auto' }}>
@@ -338,9 +432,60 @@ export function AccountPanel() {
                 ))}
             </div>
 
-            {/* AUTH TAB */}
             {tab === 'auth' && (
-                <div style={card}>
+                <div style={{ ...card, position: 'relative' }}>
+                    {toast ? (
+                        <div
+                            style={{
+                                position: 'absolute',
+                                top: 16,
+                                right: 16,
+                                zIndex: 50,
+                                maxWidth: 360,
+                            }}
+                        >
+                            <div
+                                role="alert"
+                                aria-live="assertive"
+                                style={{
+                                    background: '#fff1f2',
+                                    border: '1px solid #fecdd3',
+                                    color: '#9f1239',
+                                    borderRadius: 12,
+                                    padding: '12px 14px',
+                                    boxShadow: '0 10px 30px rgba(0,0,0,0.12)',
+                                    display: 'flex',
+                                    alignItems: 'flex-start',
+                                    gap: 10,
+                                }}
+                            >
+                                <div style={{ fontSize: 18, lineHeight: 1 }}>⚠️</div>
+
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontWeight: 700, marginBottom: 2 }}>Error</div>
+                                    <div style={{ fontSize: 14 }}>{toast.message}</div>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setToast(null)}
+                                    aria-label="Close notification"
+                                    style={{
+                                        border: 'none',
+                                        background: 'transparent',
+                                        cursor: 'pointer',
+                                        fontSize: 16,
+                                        lineHeight: 1,
+                                        color: '#9f1239',
+                                        padding: 0,
+                                    }}
+                                >
+                                    ×
+                                </button>
+                            </div>
+                        </div>
+                    ) : null}
+
                     {!user ? (
                         <>
                             <h3 style={{ marginTop: 0 }}>Sign in / Register</h3>
@@ -364,12 +509,50 @@ export function AccountPanel() {
 
                             <label>
                                 Username / Email
-                                <input value={username} onChange={(e) => setUsername(e.target.value)} />
+                                <input
+                                    value={username}
+                                    onChange={(e) => {
+                                        setUsername(e.target.value)
+                                        setVerifyToken('')
+                                        setOtp('')
+                                        setToast(null)
+                                    }}
+                                />
                             </label>
 
                             <label>
                                 Password
-                                <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" />
+                                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                    <input
+                                        type={showPassword ? 'text' : 'password'}
+                                        value={password}
+                                        onChange={(e) => {
+                                            setPassword(e.target.value)
+                                            setToast(null)
+                                        }}
+                                        style={{ width: '100%', paddingRight: 40 }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword((v) => !v)}
+                                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                        title={showPassword ? 'Hide password' : 'Show password'}
+                                        style={{
+                                            position: 'absolute',
+                                            right: 8,
+                                            border: 'none',
+                                            background: 'transparent',
+                                            padding: 0,
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            color: '#555',
+                                        }}
+                                    >
+                                        <EyeIcon open={showPassword} />
+                                    </button>
+                                </div>
                             </label>
 
                             {authMode === 'register' ? (
@@ -396,40 +579,57 @@ export function AccountPanel() {
                                 )}
                             </div>
 
-                            {/* Email verification only shown when needed */}
                             {showVerifyBox ? (
                                 <div style={subcard}>
                                     <div style={{ fontWeight: 700 }}>Email verification</div>
-                                    {lastVerificationToken ? (
-                                        <div style={{ fontSize: 12, marginTop: 6 }}>
-                                            Token: <code>{lastVerificationToken}</code>
-                                        </div>
-                                    ) : null}
+                                    <div style={{ fontSize: 13, marginTop: 6, color: '#0056b3' }}>
+                                        Registrasi berhasil. Masukkan kode verifikasi untuk menyelesaikan aktivasi akun.
+                                    </div>
+
                                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
                                         <input
                                             value={verifyToken}
-                                            onChange={(e) => setVerifyToken(e.target.value)}
-                                            placeholder="paste token"
+                                            onChange={(e) => {
+                                                setVerifyToken(e.target.value)
+                                                setToast(null)
+                                            }}
+                                            placeholder="Masukkan kode verifikasi"
+                                            autoComplete="off"
+                                            spellCheck={false}
                                             style={{ flex: '1 1 280px' }}
                                         />
-                                        <button onClick={() => void onVerifyEmail()} disabled={loading || !verifyToken}>Verify</button>
+                                        <button onClick={() => void onVerifyEmail()} disabled={loading || !verifyToken.trim()}>
+                                            Verify
+                                        </button>
                                     </div>
                                 </div>
                             ) : null}
 
-                            {/* MFA challenge after login */}
-                            {pendingMfa ? (
+                            {showLoginMfaBox ? (
                                 <div style={subcard}>
-                                    <div style={{ fontWeight: 700 }}>2FA required ({pendingMfa.method})</div>
-                                    {pendingMfa.devCode ? (
-                                        <div style={{ fontSize: 12, marginTop: 6 }}>
-                                            Dev OTP: <code>{pendingMfa.devCode}</code>
-                                        </div>
-                                    ) : null}
+                                    <div style={{ fontWeight: 700 }}>2FA required ({pendingMfa?.method})</div>
+                                    <div style={{ fontSize: 13, marginTop: 6, color: '#0056b3' }}>
+                                        Login membutuhkan OTP. Masukkan kode OTP untuk melanjutkan.
+                                    </div>
+
                                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
-                                        <input value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="6 digit" style={{ flex: '1 1 140px' }} />
-                                        <button onClick={() => void onVerifyOtp()} disabled={loading || !otp}>Verify OTP</button>
-                                        <button onClick={cancelMfa} disabled={loading}>Cancel</button>
+                                        <input
+                                            value={otp}
+                                            onChange={(e) => {
+                                                setOtp(e.target.value)
+                                                setToast(null)
+                                            }}
+                                            placeholder="6 digit OTP"
+                                            autoComplete="one-time-code"
+                                            spellCheck={false}
+                                            style={{ flex: '1 1 140px' }}
+                                        />
+                                        <button onClick={() => void onVerifyOtp()} disabled={loading || !otp.trim()}>
+                                            Verify OTP
+                                        </button>
+                                        <button onClick={cancelMfa} disabled={loading}>
+                                            Cancel
+                                        </button>
                                     </div>
                                 </div>
                             ) : null}
@@ -447,77 +647,88 @@ export function AccountPanel() {
                                 )}
                             </div>
 
-                            <div style={subcard}>
-                                <div style={{ fontWeight: 800 }}>2FA / MFA</div>
-                                <div style={{ fontSize: 12, opacity: 0.85, marginTop: 4 }}>
-                                    You can switch 2FA method anytime: enable Email OTP or enable TOTP. Login will require the active method.
-                                </div>
+                            {isAdmin ? (
+                                <div style={subcard}>
+                                    <div style={{ fontWeight: 700, marginBottom: 8 }}>2FA / MFA</div>
+                                    <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 12 }}>
+                                        Admin can still use real MFA controls. Buyer/Seller demo users are handled by the hardcoded verification code and login OTP flow.
+                                    </div>
 
-                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
-                                    <button onClick={() => void enable2faEmail()} disabled={loading}>Enable 2FA (Email OTP)</button>
-                                    <button onClick={() => void disable2fa()} disabled={loading}>Disable 2FA</button>
-                                </div>
+                                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+                                        <button onClick={() => void enable2faEmail()} disabled={loading}>
+                                            Enable 2FA (Email OTP)
+                                        </button>
+                                        <button onClick={() => void disable2fa()} disabled={loading}>
+                                            Disable 2FA
+                                        </button>
+                                    </div>
 
-                                <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
-                                    <div style={{ fontWeight: 700 }}>TOTP (Authenticator App)</div>
+                                    <hr style={{ margin: '12px 0', border: 0, borderTop: '1px solid #ddd' }} />
 
-                                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
-                                        <button onClick={() => void onTotpSetup()} disabled={loading || !canCall}>Setup / Regenerate Secret</button>
-                                        <button onClick={() => void onTotpDisable()} disabled={loading || !canCall}>Disable TOTP (Clear Secret)</button>
+                                    <div style={{ fontWeight: 700, marginBottom: 8 }}>TOTP (Authenticator App)</div>
+
+                                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                                        <button onClick={() => void onTotpSetup()} disabled={loading}>
+                                            Setup / Regenerate Secret
+                                        </button>
+                                        <button onClick={() => void onTotpDisable()} disabled={loading}>
+                                            Disable TOTP (Clear Secret)
+                                        </button>
                                     </div>
 
                                     {totpSecret ? (
-                                        <div style={{ marginTop: 10, fontSize: 12 }}>
-                                            <div>Secret: <code>{totpSecret}</code></div>
-                                            <div style={{ marginTop: 6 }}>
-                                                <button onClick={() => void copyToClipboard(totpSecret)} disabled={loading}>Copy Secret</button>
-                                            </div>
-
-                                            {totpUri ? (
-                                                <div style={{ marginTop: 10 }}>
-                                                    <div>otpauth URL:</div>
-                                                    <div style={{ wordBreak: 'break-all' }}><code>{totpUri}</code></div>
-                                                    <div style={{ marginTop: 6 }}>
-                                                        <button onClick={() => void copyToClipboard(totpUri)} disabled={loading}>Copy otpauth URL</button>
-                                                    </div>
-                                                </div>
-                                            ) : null}
-
-                                            <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                                <input
-                                                    value={totpCode}
-                                                    onChange={(e) => setTotpCode(e.target.value)}
-                                                    placeholder="Enter current code (e.g. 123456)"
-                                                    style={{ flex: '1 1 220px' }}
-                                                />
-                                                <button onClick={() => void onTotpEnable()} disabled={loading || !totpCode.trim()}>
-                                                    Enable TOTP
+                                        <div style={{ marginTop: 8, padding: 10, border: '1px solid #ddd', borderRadius: 8 }}>
+                                            <div style={{ fontSize: 12, marginBottom: 6, opacity: 0.85 }}>Secret</div>
+                                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                                                <code style={{ userSelect: 'all' }}>{totpSecret}</code>
+                                                <button onClick={() => void copyToClipboard(totpSecret)} disabled={loading}>
+                                                    Copy secret
                                                 </button>
                                             </div>
                                         </div>
-                                    ) : (
-                                        <div style={{ marginTop: 8, fontSize: 12, opacity: 0.85 }}>
-                                            Click <b>Setup</b> to generate a secret, add it to your authenticator app, then enter a code to enable.
-                                        </div>
-                                    )}
-                                </div>
+                                    ) : null}
 
-                                {mfaMsg ? (
-                                    <div style={{ marginTop: 10, fontSize: 12, opacity: 0.9 }}>
-                                        {mfaMsg}
+                                    {totpUri ? (
+                                        <div style={{ marginTop: 8, padding: 10, border: '1px solid #ddd', borderRadius: 8 }}>
+                                            <div style={{ fontSize: 12, marginBottom: 6, opacity: 0.85 }}>otpauth URI</div>
+                                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                                                <code style={{ userSelect: 'all', wordBreak: 'break-all' }}>{totpUri}</code>
+                                                <button onClick={() => void copyToClipboard(totpUri)} disabled={loading}>
+                                                    Copy URI
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : null}
+
+                                    <div style={{ marginTop: 10 }}>
+                                        <div style={{ fontSize: 12, opacity: 0.85, marginBottom: 6 }}>
+                                            After adding the secret to your authenticator app, enter the 6-digit code below to enable TOTP.
+                                        </div>
+                                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                            <input
+                                                value={totpCode}
+                                                onChange={(e) => setTotpCode(e.target.value)}
+                                                placeholder="6 digit TOTP code"
+                                                autoComplete="one-time-code"
+                                                spellCheck={false}
+                                                style={{ flex: '1 1 180px' }}
+                                            />
+                                            <button onClick={() => void onTotpEnable()} disabled={loading || !totpCode.trim()}>
+                                                Enable TOTP
+                                            </button>
+                                        </div>
                                     </div>
-                                ) : null}
-                            </div>
+
+                                    <div style={{ fontSize: 12, marginTop: 8, opacity: 0.85 }}>
+                                        {mfaMsg || 'Click Setup to generate a secret, add it to your authenticator app, then enable using a valid code.'}
+                                    </div>
+                                </div>
+                            ) : null}
                         </>
                     )}
-
-                    <div style={{ fontSize: 12, marginTop: 8, opacity: 0.9 }}>
-                        Status: {loading ? 'loading…' : 'idle'}{error ? ` | error: ${error}` : ''}
-                    </div>
                 </div>
             )}
 
-            {/* PROFILE TAB */}
             {tab === 'profile' && user && (
                 <div style={card}>
                     <h3 style={{ marginTop: 0 }}>Profile</h3>
@@ -583,7 +794,6 @@ export function AccountPanel() {
                 </div>
             )}
 
-            {/* SESSIONS TAB */}
             {tab === 'sessions' && user && (
                 <div style={card}>
                     <h3 style={{ marginTop: 0 }}>Active sessions</h3>
@@ -627,7 +837,6 @@ export function AccountPanel() {
                 </div>
             )}
 
-            {/* ADMIN TAB */}
             {tab === 'admin' && user && isAdmin && (
                 <div style={card}>
                     <h3 style={{ marginTop: 0 }}>Admin</h3>
@@ -682,8 +891,17 @@ export function AccountPanel() {
                                                         )}
 
                                                         <button onClick={() => void adminSetRole(u.id)} disabled={loading}>Set role</button>
+
                                                         <button onClick={() => void adminDisable(u.id, !u.disabled)} disabled={loading}>
                                                             {u.disabled ? 'Enable' : 'Disable'}
+                                                        </button>
+
+                                                        <button
+                                                            onClick={() => void adminDelete(u.id, u.username, u.role)}
+                                                            disabled={loading || u.role.toUpperCase() === 'ADMIN'}
+                                                            title={u.role.toUpperCase() === 'ADMIN' ? 'Admin user cannot be deleted' : 'Delete user'}
+                                                        >
+                                                            Delete
                                                         </button>
                                                     </div>
                                                 </td>
