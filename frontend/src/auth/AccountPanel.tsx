@@ -67,40 +67,32 @@ export function AccountPanel() {
     const [tab, setTab] = useState<Tab>('auth')
     const [authMode, setAuthMode] = useState<AuthMode>('login')
 
-    // Auth fields
     const [username, setUsername] = useState('')
     const [password, setPassword] = useState('')
     const [showPassword, setShowPassword] = useState(false)
     const [requestedRole, setRequestedRole] = useState<'BUYER' | 'SELLER'>('BUYER')
-
     const [verifyToken, setVerifyToken] = useState('')
     const [otp, setOtp] = useState('')
 
-    // Toast notification
     const [toast, setToast] = useState<{ type: 'error'; message: string } | null>(null)
     const didInitErrorEffect = useRef(false)
 
-    // TOTP UI state
     const [totpSecret, setTotpSecret] = useState<string | null>(null)
     const [totpUri, setTotpUri] = useState<string | null>(null)
     const [totpCode, setTotpCode] = useState('')
     const [mfaMsg, setMfaMsg] = useState('')
 
-    // Profile fields
     const [profile, setProfile] = useState<Api.UserProfile>({ displayName: null, photoUrl: null, shippingAddress: null })
     const [profileMsg, setProfileMsg] = useState('')
     const [photoOk, setPhotoOk] = useState(true)
 
-    // Sessions
     const [sessions, setSessions] = useState<Api.SessionRow[] | null>(null)
     const [sessionsMsg, setSessionsMsg] = useState('')
 
-    // Admin users
     const [adminUsers, setAdminUsers] = useState<Api.AdminUserRow[] | null>(null)
     const [adminMsg, setAdminMsg] = useState('')
     const [roleDraftById, setRoleDraftById] = useState<Record<number, string>>({})
 
-    // Admin RBAC
     const [roles, setRoles] = useState<string[]>([])
     const [perms, setPerms] = useState<Api.PermissionRow[]>([])
     const [newRole, setNewRole] = useState('')
@@ -150,8 +142,7 @@ export function AccountPanel() {
     }
 
     async function onTotpEnable() {
-        if (!accessToken) return
-        if (!totpCode.trim()) return
+        if (!accessToken || !totpCode.trim()) return
         setMfaMsg('enabling TOTP...')
         try {
             await Api.totpEnable(accessToken, totpCode.trim())
@@ -262,7 +253,6 @@ export function AccountPanel() {
 
     async function adminDelete(id: number, username: string, role: string) {
         if (!accessToken) return
-
         if (role.toUpperCase() === 'ADMIN') {
             setAdminMsg('admin user cannot be deleted')
             return
@@ -296,13 +286,11 @@ export function AccountPanel() {
         setAdminMsg('updating role...')
         try {
             await Api.adminSetUserRole(accessToken, id, desiredRole)
-
             setRoleDraftById(prev => {
                 const next = { ...prev }
                 delete next[id]
                 return next
             })
-
             await loadAdminUsers()
             setAdminMsg('role updated (user must re-login)')
         } catch {
@@ -400,15 +388,8 @@ export function AccountPanel() {
             return
         }
 
-        setToast({
-            type: 'error',
-            message: prettyErrorMessage(error),
-        })
-
-        const timer = window.setTimeout(() => {
-            setToast(null)
-        }, 3500)
-
+        setToast({ type: 'error', message: prettyErrorMessage(error) })
+        const timer = window.setTimeout(() => setToast(null), 3500)
         return () => window.clearTimeout(timer)
     }, [error])
 
@@ -423,8 +404,8 @@ export function AccountPanel() {
     }, [user, isAdmin])
 
     return (
-        <div style={{ display: 'grid', gap: 12, maxWidth: 900, margin: '0 auto' }}>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div className="ap-root">
+            <div className="ap-tabRow">
                 {tabs.map(t => (
                     <button key={t.key} onClick={() => setTab(t.key)} disabled={loading} style={tab === t.key ? activeTab : tabBtn}>
                         {t.label}
@@ -433,52 +414,20 @@ export function AccountPanel() {
             </div>
 
             {tab === 'auth' && (
-                <div style={{ ...card, position: 'relative' }}>
+                <div style={{ ...card, position: 'relative' }} className="ap-card">
                     {toast ? (
-                        <div
-                            style={{
-                                position: 'absolute',
-                                top: 16,
-                                right: 16,
-                                zIndex: 50,
-                                maxWidth: 360,
-                            }}
-                        >
-                            <div
-                                role="alert"
-                                aria-live="assertive"
-                                style={{
-                                    background: '#fff1f2',
-                                    border: '1px solid #fecdd3',
-                                    color: '#9f1239',
-                                    borderRadius: 12,
-                                    padding: '12px 14px',
-                                    boxShadow: '0 10px 30px rgba(0,0,0,0.12)',
-                                    display: 'flex',
-                                    alignItems: 'flex-start',
-                                    gap: 10,
-                                }}
-                            >
-                                <div style={{ fontSize: 18, lineHeight: 1 }}>⚠️</div>
-
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: 700, marginBottom: 2 }}>Error</div>
-                                    <div style={{ fontSize: 14 }}>{toast.message}</div>
+                        <div className="ap-toastWrap">
+                            <div role="alert" aria-live="assertive" className="ap-toast ap-toastError">
+                                <div className="ap-toastIcon">⚠️</div>
+                                <div className="ap-toastBody">
+                                    <div className="ap-toastTitle">Error</div>
+                                    <div className="ap-toastText">{toast.message}</div>
                                 </div>
-
                                 <button
                                     type="button"
                                     onClick={() => setToast(null)}
                                     aria-label="Close notification"
-                                    style={{
-                                        border: 'none',
-                                        background: 'transparent',
-                                        cursor: 'pointer',
-                                        fontSize: 16,
-                                        lineHeight: 1,
-                                        color: '#9f1239',
-                                        padding: 0,
-                                    }}
+                                    className="ap-toastClose"
                                 >
                                     ×
                                 </button>
@@ -488,27 +437,15 @@ export function AccountPanel() {
 
                     {!user ? (
                         <>
-                            <h3 style={{ marginTop: 0 }}>Sign in / Register</h3>
+                            <h3 className="ap-title">Sign in / Register</h3>
 
-                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-                                <button
-                                    onClick={() => setAuthMode('login')}
-                                    disabled={loading}
-                                    style={authMode === 'login' ? activeTab : tabBtn}
-                                >
-                                    Login
-                                </button>
-                                <button
-                                    onClick={() => setAuthMode('register')}
-                                    disabled={loading}
-                                    style={authMode === 'register' ? activeTab : tabBtn}
-                                >
-                                    Register
-                                </button>
+                            <div className="ap-inlineRow">
+                                <button onClick={() => setAuthMode('login')} disabled={loading} style={authMode === 'login' ? activeTab : tabBtn}>Login</button>
+                                <button onClick={() => setAuthMode('register')} disabled={loading} style={authMode === 'register' ? activeTab : tabBtn}>Register</button>
                             </div>
 
-                            <label>
-                                Username / Email
+                            <label className="ap-field">
+                                <span className="ap-label">Username / Email</span>
                                 <input
                                     value={username}
                                     onChange={(e) => {
@@ -520,9 +457,9 @@ export function AccountPanel() {
                                 />
                             </label>
 
-                            <label>
-                                Password
-                                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                            <label className="ap-field">
+                                <span className="ap-label">Password</span>
+                                <div className="ap-passwordWrap">
                                     <input
                                         type={showPassword ? 'text' : 'password'}
                                         value={password}
@@ -530,25 +467,14 @@ export function AccountPanel() {
                                             setPassword(e.target.value)
                                             setToast(null)
                                         }}
-                                        style={{ width: '100%', paddingRight: 40 }}
+                                        className="ap-passwordInput"
                                     />
                                     <button
                                         type="button"
-                                        onClick={() => setShowPassword((v) => !v)}
+                                        onClick={() => setShowPassword(v => !v)}
                                         aria-label={showPassword ? 'Hide password' : 'Show password'}
                                         title={showPassword ? 'Hide password' : 'Show password'}
-                                        style={{
-                                            position: 'absolute',
-                                            right: 8,
-                                            border: 'none',
-                                            background: 'transparent',
-                                            padding: 0,
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            color: '#555',
-                                        }}
+                                        className="ap-eyeBtn"
                                     >
                                         <EyeIcon open={showPassword} />
                                     </button>
@@ -556,8 +482,8 @@ export function AccountPanel() {
                             </label>
 
                             {authMode === 'register' ? (
-                                <label>
-                                    Register as
+                                <label className="ap-field">
+                                    <span className="ap-label">Register as</span>
                                     <select
                                         value={requestedRole}
                                         onChange={(e) => {
@@ -571,7 +497,7 @@ export function AccountPanel() {
                                 </label>
                             ) : null}
 
-                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            <div className="ap-inlineRow ap-primaryActions">
                                 {authMode === 'register' ? (
                                     <button onClick={() => void onRegister()} disabled={loading}>Register</button>
                                 ) : (
@@ -580,13 +506,10 @@ export function AccountPanel() {
                             </div>
 
                             {showVerifyBox ? (
-                                <div style={subcard}>
-                                    <div style={{ fontWeight: 700 }}>Email verification</div>
-                                    <div style={{ fontSize: 13, marginTop: 6, color: '#0056b3' }}>
-                                        Registrasi berhasil. Masukkan kode verifikasi untuk menyelesaikan aktivasi akun.
-                                    </div>
-
-                                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+                                <div style={subcard} className="ap-subcard">
+                                    <div className="ap-subcardTitle">Email verification</div>
+                                    <div className="ap-helpText ap-helpInfo">Registrasi berhasil. Masukkan kode verifikasi untuk menyelesaikan aktivasi akun.</div>
+                                    <div className="ap-inlineRow ap-stackOnMobile">
                                         <input
                                             value={verifyToken}
                                             onChange={(e) => {
@@ -596,23 +519,18 @@ export function AccountPanel() {
                                             placeholder="Masukkan kode verifikasi"
                                             autoComplete="off"
                                             spellCheck={false}
-                                            style={{ flex: '1 1 280px' }}
+                                            className="ap-grow"
                                         />
-                                        <button onClick={() => void onVerifyEmail()} disabled={loading || !verifyToken.trim()}>
-                                            Verify
-                                        </button>
+                                        <button onClick={() => void onVerifyEmail()} disabled={loading || !verifyToken.trim()}>Verify</button>
                                     </div>
                                 </div>
                             ) : null}
 
                             {showLoginMfaBox ? (
-                                <div style={subcard}>
-                                    <div style={{ fontWeight: 700 }}>2FA required ({pendingMfa?.method})</div>
-                                    <div style={{ fontSize: 13, marginTop: 6, color: '#0056b3' }}>
-                                        Login membutuhkan OTP. Masukkan kode OTP untuk melanjutkan.
-                                    </div>
-
-                                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+                                <div style={subcard} className="ap-subcard">
+                                    <div className="ap-subcardTitle">2FA required ({pendingMfa?.method})</div>
+                                    <div className="ap-helpText ap-helpInfo">Login membutuhkan OTP. Masukkan kode OTP untuk melanjutkan.</div>
+                                    <div className="ap-inlineRow ap-stackOnMobile">
                                         <input
                                             value={otp}
                                             onChange={(e) => {
@@ -622,106 +540,79 @@ export function AccountPanel() {
                                             placeholder="6 digit OTP"
                                             autoComplete="one-time-code"
                                             spellCheck={false}
-                                            style={{ flex: '1 1 140px' }}
+                                            className="ap-grow ap-otpInput"
                                         />
-                                        <button onClick={() => void onVerifyOtp()} disabled={loading || !otp.trim()}>
-                                            Verify OTP
-                                        </button>
-                                        <button onClick={cancelMfa} disabled={loading}>
-                                            Cancel
-                                        </button>
+                                        <button onClick={() => void onVerifyOtp()} disabled={loading || !otp.trim()}>Verify OTP</button>
+                                        <button onClick={cancelMfa} disabled={loading}>Cancel</button>
                                     </div>
                                 </div>
                             ) : null}
                         </>
                     ) : (
                         <>
-                            <h3 style={{ marginTop: 0 }}>Account</h3>
-                            <div>Logged in as <b>{user.username}</b> ({user.role})</div>
+                            <h3 className="ap-title">Account</h3>
+                            <div className="ap-userMeta">Logged in as <b>{user.username}</b> ({user.role})</div>
 
-                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+                            <div className="ap-inlineRow ap-primaryActions">
                                 <button onClick={() => void refresh()} disabled={loading}>Refresh token</button>
                                 <button onClick={() => void logout()} disabled={loading}>Logout</button>
-                                {user.role === 'BUYER' && (
-                                    <button onClick={() => void becomeSeller()} disabled={loading}>Become a Seller</button>
-                                )}
+                                {user.role === 'BUYER' && <button onClick={() => void becomeSeller()} disabled={loading}>Become a Seller</button>}
                             </div>
 
                             {isAdmin ? (
-                                <div style={subcard}>
-                                    <div style={{ fontWeight: 700, marginBottom: 8 }}>2FA / MFA</div>
-                                    <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 12 }}>
-                                        Admin can still use real MFA controls. Buyer/Seller demo users are handled by the hardcoded verification code and login OTP flow.
+                                <div style={subcard} className="ap-subcard">
+                                    <div className="ap-subcardTitle">2FA / MFA</div>
+                                    <div className="ap-helpText">Admin can still use real MFA controls. Buyer/Seller demo users are handled by the hardcoded verification code and login OTP flow.</div>
+
+                                    <div className="ap-inlineRow ap-primaryActions">
+                                        <button onClick={() => void enable2faEmail()} disabled={loading}>Enable 2FA (Email OTP)</button>
+                                        <button onClick={() => void disable2fa()} disabled={loading}>Disable 2FA</button>
                                     </div>
 
-                                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-                                        <button onClick={() => void enable2faEmail()} disabled={loading}>
-                                            Enable 2FA (Email OTP)
-                                        </button>
-                                        <button onClick={() => void disable2fa()} disabled={loading}>
-                                            Disable 2FA
-                                        </button>
-                                    </div>
+                                    <hr className="ap-divider" />
 
-                                    <hr style={{ margin: '12px 0', border: 0, borderTop: '1px solid #ddd' }} />
-
-                                    <div style={{ fontWeight: 700, marginBottom: 8 }}>TOTP (Authenticator App)</div>
-
-                                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-                                        <button onClick={() => void onTotpSetup()} disabled={loading}>
-                                            Setup / Regenerate Secret
-                                        </button>
-                                        <button onClick={() => void onTotpDisable()} disabled={loading}>
-                                            Disable TOTP (Clear Secret)
-                                        </button>
+                                    <div className="ap-subcardTitle">TOTP (Authenticator App)</div>
+                                    <div className="ap-inlineRow ap-primaryActions">
+                                        <button onClick={() => void onTotpSetup()} disabled={loading}>Setup / Regenerate Secret</button>
+                                        <button onClick={() => void onTotpDisable()} disabled={loading}>Disable TOTP (Clear Secret)</button>
                                     </div>
 
                                     {totpSecret ? (
-                                        <div style={{ marginTop: 8, padding: 10, border: '1px solid #ddd', borderRadius: 8 }}>
-                                            <div style={{ fontSize: 12, marginBottom: 6, opacity: 0.85 }}>Secret</div>
-                                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                                                <code style={{ userSelect: 'all' }}>{totpSecret}</code>
-                                                <button onClick={() => void copyToClipboard(totpSecret)} disabled={loading}>
-                                                    Copy secret
-                                                </button>
+                                        <div className="ap-copyCard">
+                                            <div className="ap-copyLabel">Secret</div>
+                                            <div className="ap-copyRow">
+                                                <code>{totpSecret}</code>
+                                                <button onClick={() => void copyToClipboard(totpSecret)} disabled={loading}>Copy secret</button>
                                             </div>
                                         </div>
                                     ) : null}
 
                                     {totpUri ? (
-                                        <div style={{ marginTop: 8, padding: 10, border: '1px solid #ddd', borderRadius: 8 }}>
-                                            <div style={{ fontSize: 12, marginBottom: 6, opacity: 0.85 }}>otpauth URI</div>
-                                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                                                <code style={{ userSelect: 'all', wordBreak: 'break-all' }}>{totpUri}</code>
-                                                <button onClick={() => void copyToClipboard(totpUri)} disabled={loading}>
-                                                    Copy URI
-                                                </button>
+                                        <div className="ap-copyCard">
+                                            <div className="ap-copyLabel">otpauth URI</div>
+                                            <div className="ap-copyRow">
+                                                <code className="ap-breakAll">{totpUri}</code>
+                                                <button onClick={() => void copyToClipboard(totpUri)} disabled={loading}>Copy URI</button>
                                             </div>
                                         </div>
                                     ) : null}
 
-                                    <div style={{ marginTop: 10 }}>
-                                        <div style={{ fontSize: 12, opacity: 0.85, marginBottom: 6 }}>
-                                            After adding the secret to your authenticator app, enter the 6-digit code below to enable TOTP.
-                                        </div>
-                                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                    <div className="ap-fieldBlock">
+                                        <div className="ap-helpText">After adding the secret to your authenticator app, enter the 6-digit code below to enable TOTP.</div>
+                                        <div className="ap-inlineRow ap-stackOnMobile">
                                             <input
                                                 value={totpCode}
                                                 onChange={(e) => setTotpCode(e.target.value)}
                                                 placeholder="6 digit TOTP code"
                                                 autoComplete="one-time-code"
                                                 spellCheck={false}
-                                                style={{ flex: '1 1 180px' }}
+                                                className="ap-grow ap-otpInput"
                                             />
-                                            <button onClick={() => void onTotpEnable()} disabled={loading || !totpCode.trim()}>
-                                                Enable TOTP
-                                            </button>
+                                            <button onClick={() => void onTotpEnable()} disabled={loading || !totpCode.trim()}>Enable TOTP</button>
                                         </div>
                                     </div>
 
-                                    <div style={{ fontSize: 12, marginTop: 8, opacity: 0.85 }}>
-                                        {mfaMsg || 'Click Setup to generate a secret, add it to your authenticator app, then enable using a valid code.'}
-                                    </div>
+                                    <div className="ap-helpText ap-mutedText">{mfaMsg || 'Click Setup to generate a secret, add it to your authenticator app, then enable using a valid code.'}</div>
                                 </div>
                             ) : null}
                         </>
@@ -730,19 +621,14 @@ export function AccountPanel() {
             )}
 
             {tab === 'profile' && user && (
-                <div style={card}>
-                    <h3 style={{ marginTop: 0 }}>Profile</h3>
+                <div style={card} className="ap-card">
+                    <h3 className="ap-title">Profile</h3>
 
                     <div className="ap-profileGrid">
                         <div className="ap-previewCard">
                             <div className="ap-avatarLg" aria-label="Profile photo preview">
                                 {profile.photoUrl && photoOk ? (
-                                    <img
-                                        src={profile.photoUrl}
-                                        alt="Profile"
-                                        referrerPolicy="no-referrer"
-                                        onError={() => setPhotoOk(false)}
-                                    />
+                                    <img src={profile.photoUrl} alt="Profile" referrerPolicy="no-referrer" onError={() => setPhotoOk(false)} />
                                 ) : (
                                     <span aria-hidden="true">{initials(profile.displayName ?? user.username)}</span>
                                 )}
@@ -751,43 +637,30 @@ export function AccountPanel() {
                             <div className="ap-previewText">
                                 <div className="ap-previewName">{profile.displayName?.trim() || user.username}</div>
                                 <div className="ap-previewMeta">{user.username} · {user.role}</div>
-                                <div className="ap-previewHint">
-                                    Paste a photo URL to preview instantly. If the URL is invalid or blocked, the avatar falls back to your initials.
-                                </div>
+                                <div className="ap-previewHint">Paste a photo URL to preview instantly. If the URL is invalid or blocked, the avatar falls back to your initials.</div>
                             </div>
                         </div>
 
                         <div className="ap-profileForm">
-                            <label>
-                                Display name
-                                <input
-                                    value={profile.displayName ?? ''}
-                                    onChange={(e) => setProfile({ ...profile, displayName: e.target.value || null })}
-                                />
+                            <label className="ap-field">
+                                <span className="ap-label">Display name</span>
+                                <input value={profile.displayName ?? ''} onChange={(e) => setProfile({ ...profile, displayName: e.target.value || null })} />
                             </label>
 
-                            <label>
-                                Photo URL
-                                <input
-                                    value={profile.photoUrl ?? ''}
-                                    onChange={(e) => setProfile({ ...profile, photoUrl: e.target.value || null })}
-                                    placeholder="https://..."
-                                    inputMode="url"
-                                />
+                            <label className="ap-field">
+                                <span className="ap-label">Photo URL</span>
+                                <input value={profile.photoUrl ?? ''} onChange={(e) => setProfile({ ...profile, photoUrl: e.target.value || null })} placeholder="https://..." inputMode="url" />
                             </label>
 
-                            <label>
-                                Shipping address
-                                <textarea
-                                    value={profile.shippingAddress ?? ''}
-                                    onChange={(e) => setProfile({ ...profile, shippingAddress: e.target.value || null })}
-                                />
+                            <label className="ap-field">
+                                <span className="ap-label">Shipping address</span>
+                                <textarea value={profile.shippingAddress ?? ''} onChange={(e) => setProfile({ ...profile, shippingAddress: e.target.value || null })} />
                             </label>
 
                             <div className="ap-actions">
                                 <button onClick={() => void loadProfile()} disabled={!canCall || loading}>Reload</button>
                                 <button onClick={() => void saveProfile()} disabled={!canCall || loading}>Save</button>
-                                <span style={{ fontSize: 12, opacity: 0.8 }}>{profileMsg}</span>
+                                <span className="ap-statusText">{profileMsg}</span>
                             </div>
                         </div>
                     </div>
@@ -795,16 +668,16 @@ export function AccountPanel() {
             )}
 
             {tab === 'sessions' && user && (
-                <div style={card}>
-                    <h3 style={{ marginTop: 0 }}>Active sessions</h3>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <div style={card} className="ap-card">
+                    <h3 className="ap-title">Active sessions</h3>
+                    <div className="ap-inlineRow ap-toolbarRow">
                         <button onClick={() => void loadSessions()} disabled={!canCall || loading}>Reload</button>
-                        <span style={{ fontSize: 12, opacity: 0.8 }}>{sessionsMsg}</span>
+                        <span className="ap-statusText">{sessionsMsg}</span>
                     </div>
 
                     {sessions?.length ? (
-                        <div style={{ overflowX: 'auto', marginTop: 10 }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <div className="ap-tableScroll">
+                            <table className="ap-table">
                                 <thead>
                                 <tr>
                                     <th style={th}>Token</th>
@@ -821,39 +694,35 @@ export function AccountPanel() {
                                         <td style={td}>{fmt(s.createdAt)}</td>
                                         <td style={td}>{fmt(s.lastSeenAt)}</td>
                                         <td style={td}>{s.revokedAt ? fmt(s.revokedAt) : '-'}</td>
-                                        <td style={td}>
-                                            <button onClick={() => void revokeOneSession(s.token)} disabled={loading}>
-                                                Revoke
-                                            </button>
-                                        </td>
+                                        <td style={td}><button onClick={() => void revokeOneSession(s.token)} disabled={loading}>Revoke</button></td>
                                     </tr>
                                 ))}
                                 </tbody>
                             </table>
                         </div>
                     ) : (
-                        <div style={{ opacity: 0.8, marginTop: 10 }}>No sessions</div>
+                        <div className="ap-emptyState">No sessions</div>
                     )}
                 </div>
             )}
 
             {tab === 'admin' && user && isAdmin && (
-                <div style={card}>
-                    <h3 style={{ marginTop: 0 }}>Admin</h3>
+                <div style={card} className="ap-card">
+                    <h3 className="ap-title">Admin</h3>
 
-                    <div style={subcard}>
-                        <div style={{ fontWeight: 700 }}>Users</div>
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 8 }}>
+                    <div style={subcard} className="ap-subcard">
+                        <div className="ap-subcardTitle">Users</div>
+                        <div className="ap-inlineRow ap-toolbarRow">
                             <button onClick={() => void loadAdminUsers()} disabled={!canCall || loading}>Reload users</button>
-                            <span style={{ fontSize: 12, opacity: 0.8 }}>{adminMsg}</span>
+                            <span className="ap-statusText">{adminMsg}</span>
                         </div>
 
                         {adminUsers?.length ? (
-                            <div style={{ overflowX: 'auto', marginTop: 10 }}>
-                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <div className="ap-tableScroll">
+                                <table className="ap-table">
                                     <thead>
                                     <tr>
-                                        <th style={th}>No.</th>
+                                        <th style={th}>ID</th>
                                         <th style={th}>Username</th>
                                         <th style={th}>Role</th>
                                         <th style={th}>Disabled</th>
@@ -861,24 +730,20 @@ export function AccountPanel() {
                                     </tr>
                                     </thead>
                                     <tbody>
-                                    {adminUsers.map((u, index) => {
+                                    {adminUsers.map(u => {
                                         const options = roles.length ? Array.from(new Set([...roles, u.role])) : [u.role]
                                         const value = roleDraftById[u.id] ?? u.role
 
                                         return (
                                             <tr key={u.id}>
-                                                <td style={td} title={`DB ID: ${u.id}`}>{index + 1}</td>
+                                                <td style={td}>{u.id}</td>
                                                 <td style={td}>{u.username}</td>
                                                 <td style={td}>{u.role}</td>
                                                 <td style={td}>{u.disabled ? 'yes' : 'no'}</td>
                                                 <td style={td}>
-                                                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                                                    <div className="ap-adminActionRow">
                                                         {roles.length ? (
-                                                            <select
-                                                                value={value}
-                                                                onChange={(e) => setRoleDraftById(prev => ({ ...prev, [u.id]: e.target.value }))}
-                                                                style={{ width: 140 }}
-                                                            >
+                                                            <select value={value} onChange={(e) => setRoleDraftById(prev => ({ ...prev, [u.id]: e.target.value }))} className="ap-roleSelect">
                                                                 {options.map(r => <option key={r} value={r}>{r}</option>)}
                                                             </select>
                                                         ) : (
@@ -886,16 +751,12 @@ export function AccountPanel() {
                                                                 placeholder={`Current: ${u.role}`}
                                                                 value={roleDraftById[u.id] ?? ''}
                                                                 onChange={(e) => setRoleDraftById(prev => ({ ...prev, [u.id]: e.target.value }))}
-                                                                style={{ width: 140 }}
+                                                                className="ap-roleSelect"
                                                             />
                                                         )}
 
                                                         <button onClick={() => void adminSetRole(u.id)} disabled={loading}>Set role</button>
-
-                                                        <button onClick={() => void adminDisable(u.id, !u.disabled)} disabled={loading}>
-                                                            {u.disabled ? 'Enable' : 'Disable'}
-                                                        </button>
-
+                                                        <button onClick={() => void adminDisable(u.id, !u.disabled)} disabled={loading}>{u.disabled ? 'Enable' : 'Disable'}</button>
                                                         <button
                                                             onClick={() => void adminDelete(u.id, u.username, u.role)}
                                                             disabled={loading || u.role.toUpperCase() === 'ADMIN'}
@@ -912,33 +773,33 @@ export function AccountPanel() {
                                 </table>
                             </div>
                         ) : (
-                            <div style={{ opacity: 0.8, marginTop: 10 }}>No users loaded</div>
+                            <div className="ap-emptyState">No users loaded</div>
                         )}
                     </div>
 
-                    <div style={subcard}>
-                        <div style={{ fontWeight: 700 }}>RBAC (roles & permissions)</div>
+                    <div style={subcard} className="ap-subcard">
+                        <div className="ap-subcardTitle">RBAC (roles & permissions)</div>
 
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8, alignItems: 'center' }}>
+                        <div className="ap-inlineRow ap-toolbarRow">
                             <button onClick={() => void loadRbac()} disabled={!canCall || loading}>Reload RBAC</button>
-                            <span style={{ fontSize: 12, opacity: 0.8 }}>{rbacMsg}</span>
+                            <span className="ap-statusText">{rbacMsg}</span>
                         </div>
 
-                        <div style={{ display: 'grid', gap: 10, marginTop: 10 }}>
-                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                <input placeholder="NEW ROLE (e.g. MODERATOR)" value={newRole} onChange={(e) => setNewRole(e.target.value)} />
+                        <div className="ap-rbacStack">
+                            <div className="ap-inlineRow ap-stackOnMobile">
+                                <input placeholder="NEW ROLE (e.g. MODERATOR)" value={newRole} onChange={(e) => setNewRole(e.target.value)} className="ap-grow" />
                                 <button onClick={() => void createRole()} disabled={loading || !newRole}>Create role</button>
                             </div>
 
-                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                <input placeholder="perm key (bid:place)" value={newPermKey} onChange={(e) => setNewPermKey(e.target.value)} />
-                                <input placeholder="description" value={newPermDesc} onChange={(e) => setNewPermDesc(e.target.value)} />
+                            <div className="ap-inlineRow ap-stackOnMobile">
+                                <input placeholder="perm key (bid:place)" value={newPermKey} onChange={(e) => setNewPermKey(e.target.value)} className="ap-grow" />
+                                <input placeholder="description" value={newPermDesc} onChange={(e) => setNewPermDesc(e.target.value)} className="ap-grow" />
                                 <button onClick={() => void createPerm()} disabled={loading || !newPermKey}>Create permission</button>
                             </div>
 
-                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                                <label>
-                                    Role:
+                            <div className="ap-inlineRow ap-stackOnMobile ap-roleControlRow">
+                                <label className="ap-inlineLabel">
+                                    <span>Role:</span>
                                     <select
                                         value={selectedRole}
                                         onChange={(e) => {
@@ -954,19 +815,19 @@ export function AccountPanel() {
                                 <button onClick={() => void saveRolePerms()} disabled={loading}>Save role perms</button>
                             </div>
 
-                            <div style={{ display: 'grid', gap: 6 }}>
-                                <div style={{ fontSize: 12, opacity: 0.8 }}>Permissions (tick to grant to role)</div>
-                                <div style={{ display: 'grid', gap: 6, gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+                            <div className="ap-permSection">
+                                <div className="ap-statusText">Permissions (tick to grant to role)</div>
+                                <div className="ap-permGrid">
                                     {perms.map(p => {
                                         const checked = selectedRolePerms.includes(p.key)
                                         return (
-                                            <label key={p.key} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                            <label key={p.key} className="ap-permItem">
                                                 <input
                                                     type="checkbox"
                                                     checked={checked}
                                                     onChange={() => setSelectedRolePerms(prev => checked ? prev.filter(x => x !== p.key) : [...prev, p.key])}
                                                 />
-                                                <span><code>{p.key}</code> <span style={{ opacity: 0.7 }}>{p.description ?? ''}</span></span>
+                                                <span><code>{p.key}</code> <span className="ap-permDesc">{p.description ?? ''}</span></span>
                                             </label>
                                         )
                                     })}
@@ -977,7 +838,7 @@ export function AccountPanel() {
                 </div>
             )}
 
-            <div style={{ fontSize: 12, opacity: 0.85 }}>
+            <div className="ap-tokenHint">
                 {tokens?.accessToken ? <>Access: <code>{tokens.accessToken.slice(0, 10)}…</code></> : null}
             </div>
         </div>
@@ -1014,7 +875,7 @@ const activeTab: CSSProperties = {
     background: 'rgba(8, 106, 244, 0.08)',
 }
 
-const th: CSSProperties = { borderBottom: '1px solid #ccc', padding: 6, textAlign: 'left' }
+const th: CSSProperties = { borderBottom: '1px solid #ccc', padding: 6, textAlign: 'left', whiteSpace: 'nowrap' }
 const td: CSSProperties = { borderBottom: '1px solid #eee', padding: 6, verticalAlign: 'top' }
 
 function fmt(iso: string) {
@@ -1024,11 +885,7 @@ function fmt(iso: string) {
 }
 
 function initials(name: string) {
-    const parts = name
-        .trim()
-        .split(/\s+/g)
-        .filter(Boolean)
-        .slice(0, 2)
+    const parts = name.trim().split(/\s+/g).filter(Boolean).slice(0, 2)
     const s = parts.map(p => p[0]?.toUpperCase() ?? '').join('')
     return s || 'U'
 }
