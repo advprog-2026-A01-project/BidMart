@@ -853,7 +853,7 @@ export function AccountPanel() {
                                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                     <thead>
                                     <tr>
-                                        <th style={th}>ID</th>
+                                        <th style={th}>No.</th>
                                         <th style={th}>Username</th>
                                         <th style={th}>Role</th>
                                         <th style={th}>Disabled</th>
@@ -861,13 +861,13 @@ export function AccountPanel() {
                                     </tr>
                                     </thead>
                                     <tbody>
-                                    {adminUsers.map(u => {
+                                    {adminUsers.map((u, index) => {
                                         const options = roles.length ? Array.from(new Set([...roles, u.role])) : [u.role]
                                         const value = roleDraftById[u.id] ?? u.role
 
                                         return (
                                             <tr key={u.id}>
-                                                <td style={td}>{u.id}</td>
+                                                <td style={td} title={`DB ID: ${u.id}`}>{index + 1}</td>
                                                 <td style={td}>{u.username}</td>
                                                 <td style={td}>{u.role}</td>
                                                 <td style={td}>{u.disabled ? 'yes' : 'no'}</td>
