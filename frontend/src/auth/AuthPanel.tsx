@@ -19,7 +19,7 @@ export function AuthPanel() {
     const [verifyToken, setVerifyToken] = useState('')
     const [otp, setOtp] = useState('')
 
-    const [log, setLog] = useState<string>('')
+    const [, setLog] = useState<string>('')
     const [sessionRows, setSessionRows] = useState<SessionRow[] | null>(null)
 
     useEffect(() => {
@@ -210,12 +210,8 @@ export function AuthPanel() {
 
             <hr />
 
-            <div style={{ fontSize: 12 }}>
-                <div>
-                    Status: {loading ? 'loading…' : 'idle'}
-                    {error ? ` | error: ${error}` : ''}
-                </div>
-                <pre style={{ marginTop: 8, whiteSpace: 'pre-wrap' }}>{log}</pre>
+            <div style={{ fontSize: 12, marginTop: 8, opacity: 0.9 }}>
+                Status: {loading ? 'loading…' : 'idle'}{error ? ` | error: ${error}` : ''}
             </div>
         </div>
     )

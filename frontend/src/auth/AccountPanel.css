@@ -393,3 +393,204 @@
         width: 100%;
     }
 }
+
+/* ===== Auth form tidy layout ===== */
+
+.ap-authShell {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+}
+
+.ap-authFormCard {
+    width: 100%;
+    max-width: 560px;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: #fff;
+    padding: 20px;
+    box-shadow: 0 8px 24px rgba(16, 24, 40, 0.06);
+}
+
+.ap-authHeader {
+    margin-bottom: 14px;
+}
+
+.ap-authTitle {
+    margin: 0;
+    font-size: 1.75rem;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+}
+
+.ap-authSubtitle {
+    margin: 8px 0 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #667085;
+}
+
+.ap-authModeRow {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+.ap-authFields {
+    display: grid;
+    gap: 14px;
+}
+
+.ap-field {
+    display: grid;
+    gap: 6px;
+}
+
+.ap-label {
+    font-size: 14px;
+    font-weight: 700;
+    color: #111827;
+}
+
+.ap-authSubmit {
+    margin-top: 16px;
+    display: flex;
+}
+
+.ap-primaryBtn {
+    min-width: 140px;
+}
+
+.ap-authSubcard {
+    margin-top: 16px;
+}
+
+.ap-authInlineAction {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+
+.ap-authInlineAction input {
+    flex: 1 1 220px;
+    min-width: 0;
+}
+
+.ap-subcardTitle {
+    font-weight: 700;
+}
+
+.ap-helpText {
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.ap-helpInfo {
+    margin-top: 6px;
+    color: #0056b3;
+}
+
+@media (max-width: 640px) {
+    .ap-authFormCard {
+        padding: 16px;
+        border-radius: 16px;
+    }
+
+    .ap-authTitle {
+        font-size: 1.4rem;
+    }
+
+    .ap-authInlineAction {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .ap-authInlineAction > * {
+        width: 100%;
+    }
+
+    .ap-authSubmit {
+        display: block;
+    }
+
+    .ap-primaryBtn {
+        width: 100%;
+    }
+}
+
+/* ===== RBAC create role / create permission polish ===== */
+
+.ap-rbacCreateGrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.ap-rbacCreateCard {
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: #fff;
+    padding: 14px;
+    box-shadow: 0 4px 14px rgba(16, 24, 40, 0.04);
+    min-width: 0;
+}
+
+.ap-rbacCreateHeader {
+    margin-bottom: 12px;
+}
+
+.ap-rbacCreateTitle {
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1.2;
+    color: #111827;
+}
+
+.ap-rbacCreateHint {
+    margin-top: 6px;
+    font-size: 12px;
+    line-height: 1.45;
+    color: #667085;
+}
+
+.ap-rbacField {
+    margin-top: 0;
+}
+
+.ap-rbacPermFields {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: 1fr 1fr;
+}
+
+.ap-rbacCreateAction {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 12px;
+}
+
+.ap-rbacCreateAction > button {
+    min-width: 150px;
+}
+
+@media (max-width: 900px) {
+    .ap-rbacCreateGrid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .ap-rbacPermFields {
+        grid-template-columns: 1fr;
+    }
+
+    .ap-rbacCreateAction {
+        justify-content: stretch;
+    }
+
+    .ap-rbacCreateAction > button {
+        width: 100%;
+    }
+}

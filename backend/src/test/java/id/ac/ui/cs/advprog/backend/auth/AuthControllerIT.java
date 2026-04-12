@@ -153,23 +153,6 @@ class AuthControllerIT {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath(JSON_OK).value(true));
 
-        final String loginBody = login(username, password)
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        final String accessToken = jsonText(loginBody, FIELD_ACCESS_TOKEN);
-        assertThat(accessToken).isNotBlank();
-
-        enableEmail2fa(accessToken)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath(JSON_OK).value(true));
-
-        logout(accessToken)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath(JSON_OK).value(true));
-
         final String mfaBody = login(username, password)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath(JSON_MFA_REQUIRED).value(true))
@@ -181,7 +164,37 @@ class AuthControllerIT {
         final String challengeId = jsonText(mfaBody, FIELD_CHALLENGE_ID);
         assertThat(challengeId).isNotBlank();
 
-        verifyMfa(challengeId, DEMO_OTP_CODE)
+        final String tokenBody = verifyMfa(challengeId, DEMO_OTP_CODE)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(JSON_ACCESS_TOKEN).isString())
+                .andExpect(jsonPath(JSON_REFRESH_TOKEN).isString())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        final String accessToken = jsonText(tokenBody, FIELD_ACCESS_TOKEN);
+        assertThat(accessToken).isNotBlank();
+
+        enableEmail2fa(accessToken)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(JSON_OK).value(true));
+
+        logout(accessToken)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(JSON_OK).value(true));
+
+        final String mfaBody2 = login(username, password)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(JSON_MFA_REQUIRED).value(true))
+                .andExpect(jsonPath(JSON_METHOD).value(MFA_METHOD_EMAIL))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        final String challengeId2 = jsonText(mfaBody2, FIELD_CHALLENGE_ID);
+        assertThat(challengeId2).isNotBlank();
+
+        verifyMfa(challengeId2, DEMO_OTP_CODE)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath(JSON_ACCESS_TOKEN).isString())
                 .andExpect(jsonPath(JSON_REFRESH_TOKEN).isString());
@@ -191,12 +204,6 @@ class AuthControllerIT {
         return mvc.perform(post(API_REGISTER)
                 .contentType(APPLICATION_JSON)
                 .content(om.writeValueAsString(new Cred(username, password))));
-    }
-
-    private ResultActions verifyEmailWithToken(final String token) throws Exception {
-        return mvc.perform(post(API_VERIFY_EMAIL)
-                .contentType(APPLICATION_JSON)
-                .content(om.writeValueAsString(Map.of(FIELD_TOKEN, token))));
     }
 
     private ResultActions verifyEmailWithUsername(final String username, final String code) throws Exception {

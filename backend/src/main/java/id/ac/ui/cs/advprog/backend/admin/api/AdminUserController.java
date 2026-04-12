@@ -24,6 +24,7 @@ import org.springframework.security.core.Authentication;
 public class AdminUserController {
 
     private static final String ERROR_KEY = "error";
+    private static final String ROLE_ADMIN = "ADMIN";
 
     private final UserAdminRepository userAdminRepository;
     private final UserAuthRepository userAuthRepository;
@@ -135,7 +136,7 @@ public class AdminUserController {
         }
 
         final var target = targetOpt.get();
-        if ("ADMIN".equalsIgnoreCase(target.role())) {
+        if (ROLE_ADMIN.equalsIgnoreCase(target.role())) {
             return ResponseEntity.badRequest().body(err("cannot_delete_admin"));
         }
 
