@@ -9,8 +9,7 @@ export function AuthPanel() {
         register, verifyEmail,
         login, submitMfa, cancelMfa,
         enable2faEmail, disable2fa,
-        logout, refresh,
-        lastVerificationToken, pendingMfa,
+        logout, refresh, pendingMfa,
     } = useAuth()
 
     const [username, setUsername] = useState('demo')
@@ -20,7 +19,7 @@ export function AuthPanel() {
     const [verifyToken, setVerifyToken] = useState('')
     const [otp, setOtp] = useState('')
 
-    const [log, setLog] = useState<string>('')
+    const [, setLog] = useState<string>('')
     const [sessionRows, setSessionRows] = useState<SessionRow[] | null>(null)
 
     useEffect(() => {
@@ -41,20 +40,20 @@ export function AuthPanel() {
         setLog('registering...')
         try {
             await register(username, password, requestedRole)
-            setLog('register ok — verify email before login')
-            if (lastVerificationToken) setVerifyToken(lastVerificationToken)
+            setLog('register ok — check your email for the verification token')
+            // Hapus auto-fill: if (lastVerificationToken) setVerifyToken(lastVerificationToken)
         } catch {
             setLog('register failed')
         }
     }
 
     async function onVerifyEmail() {
-        setLog('verifying email...')
+        setLog('Verifying email...')
         try {
-            await verifyEmail(verifyToken)
-            setLog('email verified — now login')
+            await verifyEmail(verifyToken, username)
+            setLog('Email verified! - now login')
         } catch {
-            setLog('verify email failed')
+            setLog('Verify email failed')
         }
     }
 
@@ -128,11 +127,9 @@ export function AuthPanel() {
 
                     <div style={{ border: '1px solid #333', borderRadius: 12, padding: 12 }}>
                         <div style={{ fontWeight: 700 }}>Email verification</div>
-                        {lastVerificationToken ? (
-                            <div style={{ fontSize: 12, marginTop: 8 }}>
-                                Token: <code>{lastVerificationToken}</code>
-                            </div>
-                        ) : null}
+                        <div style={{ fontSize: 13, marginTop: 6, color: '#0056b3' }}>
+                            Masukkan kode verifikasi untuk akun <b>{username}</b>.
+                        </div>
 
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
                             <input
@@ -148,11 +145,11 @@ export function AuthPanel() {
                     {pendingMfa ? (
                         <div style={{ border: '1px solid #333', borderRadius: 12, padding: 12 }}>
                             <div style={{ fontWeight: 700 }}>2FA required ({pendingMfa.method})</div>
-                            {pendingMfa.devCode ? (
-                                <div style={{ fontSize: 12, marginTop: 8 }}>
-                                    Dev OTP: <code>{pendingMfa.devCode}</code>
-                                </div>
-                            ) : null}
+                            <div style={{ fontSize: 13, marginTop: 6, color: '#0056b3' }}>
+                                {pendingMfa.method === 'EMAIL'
+                                    ? 'Masukkan 6-digit kode OTP untuk melanjutkan login.'
+                                    : 'Masukkan 6-digit kode dari aplikasi Authenticator Anda.'}
+                            </div>
 
                             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
                                 <input value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="6-digit code" style={{ flex: '1 1 160px' }} />
@@ -213,12 +210,8 @@ export function AuthPanel() {
 
             <hr />
 
-            <div style={{ fontSize: 12 }}>
-                <div>
-                    Status: {loading ? 'loading…' : 'idle'}
-                    {error ? ` | error: ${error}` : ''}
-                </div>
-                <pre style={{ marginTop: 8, whiteSpace: 'pre-wrap' }}>{log}</pre>
+            <div style={{ fontSize: 12, marginTop: 8, opacity: 0.9 }}>
+                Status: {loading ? 'loading…' : 'idle'}{error ? ` | error: ${error}` : ''}
             </div>
         </div>
     )

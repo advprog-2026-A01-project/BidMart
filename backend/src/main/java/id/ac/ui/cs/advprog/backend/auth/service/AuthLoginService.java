@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.backend.auth.service;
 
+import id.ac.ui.cs.advprog.backend.auth.model.Role;
 import id.ac.ui.cs.advprog.backend.auth.repository.SessionRepository;
 import id.ac.ui.cs.advprog.backend.auth.repository.UserAuthRepository;
 import java.time.Clock;
@@ -51,6 +52,12 @@ public class AuthLoginService {
         final Instant now = Instant.now(clock);
         sessionLimitService.enforce(user.id(), now);
 
+        // BUYER / SELLER selalu wajib OTP setiap login
+        if (shouldAlwaysRequireOtp(user)) {
+            return mfaChallengeService.createChallenge(user, username, now);
+        }
+
+        // ADMIN tetap mengikuti flow lama
         if (!user.mfaEnabled()) {
             final var pair = tokenService.issue(user.id(), now, new AuthTokenService.ClientMeta(meta.userAgent(), meta.ip()));
             return new LoginResult.Tokens(pair);
@@ -76,5 +83,9 @@ public class AuthLoginService {
     @Transactional
     public void disableMfa(final long userId) {
         mfaManagementService.disableAllMfa(userId);
+    }
+
+    private boolean shouldAlwaysRequireOtp(final UserAuthRepository.UserRow user) {
+        return user.role() != null && user.role() != Role.ADMIN;
     }
 }

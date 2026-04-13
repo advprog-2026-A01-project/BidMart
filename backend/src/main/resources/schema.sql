@@ -59,10 +59,14 @@ CREATE TABLE IF NOT EXISTS app_email_verifications (
     token UUID PRIMARY KEY,
     user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    used_at TIMESTAMP WITH TIME ZONE
+    used_at TIMESTAMP WITH TIME ZONE,
+    demo_code VARCHAR(64)
 );
 
+ALTER TABLE app_email_verifications ADD COLUMN IF NOT EXISTS demo_code VARCHAR(64);
+
 CREATE INDEX IF NOT EXISTS idx_email_verifications_user_id ON app_email_verifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_email_verifications_user_demo_code ON app_email_verifications(user_id, demo_code);
 
 -- ===== 2FA (MFA) challenges =====
 
