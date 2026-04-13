@@ -1,14 +1,17 @@
 # ---- build stage ----
-# Kebutuhan untuk Github Actions nanti (Kalo tidak perlu bisa diapus)
-FROM gradle:8.7-jdk21 AS build
+FROM node:20-alpine AS build
 WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
 COPY . .
-RUN gradle clean bootJar --no-daemon
+RUN npm run build
 
 # ---- runtime stage ----
-FROM eclipse-temurin:21-jre
-WORKDIR /app
-COPY --from=build /app/build/libs/*.jar app.jar
-EXPOSE 8080
-ENV JAVA_OPTS=""
-ENTRYPOINT ["sh","-lc","java $JAVA_OPTS -jar app.jar"]
+FROM nginx:alpine
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist /usr/share/nginx/html
+
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
