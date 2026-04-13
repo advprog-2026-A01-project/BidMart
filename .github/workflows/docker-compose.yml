@@ -2,7 +2,7 @@ name: CI-CD
 
 on:
   push:
-    branches: [ "main", "staging" ]
+    branches: ["main", "staging"]
   pull_request:
 
 jobs:
@@ -11,20 +11,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Backend
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "21"
+
       - name: Backend - test + quality
         working-directory: backend
         run: ./gradlew clean test pmdMain pmdTest
 
-      # Fullstack
-      # Frontend
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
+
       - name: Frontend - build
         working-directory: frontend
         run: |
@@ -38,21 +37,49 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build & start stack (dummy deploy)
+      - name: Build & start stack
+        run: docker compose up -d --build
+
+      - name: Smoke test backend
         run: |
-          docker compose up -d --build
-          
-          echo "Waiting for backend to start..."
-          # Beri jeda 10 detik, lalu coba curl sampai 10 kali tiap 5 detik jika gagal
-          sleep 10
-          curl -fsS --retry 10 --retry-delay 5 --retry-connrefused http://localhost:8080/api/db/ping || (docker compose logs backend && exit 1)
-          
-          # smoke check frontend
-          curl -fsS --retry 5 --retry-delay 5 --retry-connrefused http://localhost:5173/ || (docker compose logs frontend && exit 1)
-          
-          docker compose ps
-          docker compose down
+          curl -fsS -v \
+            --retry 30 \
+            --retry-delay 2 \
+            --retry-connrefused \
+            --retry-all-errors \
+            http://localhost:8080/api/db/ping \
+          || {
+            echo "=== docker compose ps ===";
+            docker compose ps;
+            echo "=== backend logs ===";
+            docker compose logs backend;
+            echo "=== db logs ===";
+            docker compose logs db;
+            exit 1;
+          }
+
+      - name: Smoke test frontend
+        run: |
+          curl -fsS -v \
+            --retry 30 \
+            --retry-delay 2 \
+            --retry-connrefused \
+            --retry-all-errors \
+            http://localhost:5173/ \
+          || {
+            echo "=== docker compose ps ===";
+            docker compose ps;
+            echo "=== frontend logs ===";
+            docker compose logs frontend;
+            exit 1;
+          }
+
+      - name: Show containers
+        run: docker compose ps
 
       - name: Mark environment
-        run: |
-          echo "Deployed environment = ${{ github.ref_name }}"
+        run: echo "Deployed environment = ${{ github.ref_name }}"
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

@@ -11,6 +11,8 @@
         <property name="com.intellij.clouds.kubernetes.db.enabled" value="false" />
         <property name="com.intellij.clouds.kubernetes.db.container.port" />
       </jdbc-additional-properties>
+      <secret-storage>master_key</secret-storage>
+      <user-name>bidmart</user-name>
       <schema-mapping />
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
