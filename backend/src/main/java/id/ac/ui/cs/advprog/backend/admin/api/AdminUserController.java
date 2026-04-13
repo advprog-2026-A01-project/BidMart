@@ -117,6 +117,7 @@ public class AdminUserController {
         return s.toUpperCase(Locale.ROOT);
     }
 
+
     public record RoleUpdate(String role) {}
     public record DisableUpdate(boolean disabled) {}
 
