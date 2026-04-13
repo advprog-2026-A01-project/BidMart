@@ -3,33 +3,41 @@ package id.ac.ui.cs.advprog.backend.auth.model;
 import org.springframework.http.HttpStatus;
 
 /*
-Tanggung jawab: error domain auth yang konsisten (code + status).
+Tanggung jawab: error domain auth yang konsisten (code + status). Buatan sendiri
  */
 public class AuthException extends RuntimeException {
 
     private static final long serialVersionUID = 1L;
-
     private final String code;
     private final HttpStatus status;
 
+    // Constructor
     public AuthException(final HttpStatus status, final String code) {
         super(code);
         this.code = code;
         this.status = status;
     }
 
+    // Constructor
     public AuthException(final HttpStatus status, final String code, final Throwable cause) {
         super(code, cause);
         this.code = code;
         this.status = status;
     }
 
-    public String getCode() { return code; }
-    public HttpStatus getStatus() { return status; }
+    public String getCode() {
+        return code;
+    }
+
+    public HttpStatus getStatus() {
+        return status;
+    }
 
     public static AuthException invalidCredentials() {
         return new AuthException(HttpStatus.UNAUTHORIZED, "invalid_credentials");
     }
+
+    // -- Untuk Generate RandomKey for user upon register and login
 
     public static AuthException usernameTaken() {
         return new AuthException(HttpStatus.CONFLICT, "username_taken");
