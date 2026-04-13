@@ -15,6 +15,14 @@
       <ProjectState />
     </projectState>
   </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Interface" />
+        <option value="Class" />
+      </list>
+    </option>
+  </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
@@ -37,7 +45,8 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
-    "git-widget-placeholder": "staging"
+    "git-widget-placeholder": "feat/auth",
+    "ts.external.directory.path": "/snap/intellij-idea-ultimate/742/plugins/javascript-plugin/jsLanguageServicesImpl/external"
   }
 }]]></component>
   <component name="RunManager">
