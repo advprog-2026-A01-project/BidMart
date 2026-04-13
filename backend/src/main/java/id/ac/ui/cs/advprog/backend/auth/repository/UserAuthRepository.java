@@ -109,6 +109,10 @@ public class UserAuthRepository {
         return null;
     }
 
+    public void updatePasswordHash(final long userId, final String passwordHash) {
+        jdbcTemplate.update("UPDATE app_users SET password_hash = ? WHERE id = ?", passwordHash, userId);
+    }
+
     public record UserRow(
             long id,
             String username,
