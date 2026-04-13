@@ -7,6 +7,8 @@
 > - Semua credentials di README ini untuk **dev/local aja**.
 
 ---
+## Website BidMart A01 (Deployment on Heroku):
+[BidMart - A01 Website Deployment (Heroku)](https://bidmart-a01-190e4c7e01d5.herokuapp.com/)
 
 ## Project Structure
 - `backend/` — Spring Boot (Java 21) + PostgreSQL + Security/RBAC + PMD + JUnit

@@ -8,9 +8,16 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.regex.Pattern;
+
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
+import org.springframework.context.annotation.Bean;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.web.SecurityFilterChain;
+
+@EnableWebSecurity
 public final class TotpUtil {
 
     private static final String HMAC_ALG = "HmacSHA1";
@@ -158,5 +165,22 @@ public final class TotpUtil {
     private static String urlEncode(final String s) {
         if (s == null) return EMPTY;
         return java.net.URLEncoder.encode(s, StandardCharsets.UTF_8);
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+            // ...
+            .authorizeHttpRequests(auth -> auth
+                // 👇 BERIKAN IZIN AKSES PUBLIK UNTUK FILE FRONTEND 👇
+                .requestMatchers("/", "/index.html", "/assets/**", "/vite.svg").permitAll()
+                
+                // Endpoint API kamu yang lain biarkan seperti semula
+                .requestMatchers("/api/auth/**").permitAll()
+                .anyRequest().authenticated()
+            );
+            // ...
+        
+        return http.build();
     }
 }
