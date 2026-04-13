@@ -42,11 +42,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     }, [])
 
-    const verifyEmail = useCallback(async (token: string) => {
+    const verifyEmail = useCallback(async (token: string, username?: string) => {
         setLoading(true)
         setError(null)
         try {
-            await AuthApi.verifyEmail(token)
+            await AuthApi.verifyEmail(token, username)
             setLastVerificationToken(null)
         } catch (e: unknown) {
             setError(normalizeError(e))

@@ -20,6 +20,7 @@
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-starter-web:3.5.11" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-starter-security:3.5.11" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-starter-jdbc:3.5.11" level="project" />
+    <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-starter-mail:3.5.11" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-starter-test:3.5.11" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-starter-json:3.5.11" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-starter:3.5.11" level="project" />
@@ -31,6 +32,8 @@
     <orderEntry type="library" name="Gradle: org.springframework:spring-aop:6.2.16" level="project" />
     <orderEntry type="library" name="Gradle: com.zaxxer:HikariCP:6.3.3" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework:spring-jdbc:6.2.16" level="project" />
+    <orderEntry type="library" name="Gradle: org.springframework:spring-context-support:6.2.16" level="project" />
+    <orderEntry type="library" name="Gradle: org.eclipse.angus:jakarta.mail:2.0.5" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-test-autoconfigure:3.5.11" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-test:3.5.11" level="project" />
     <orderEntry type="library" name="Gradle: com.jayway.jsonpath:json-path:2.9.0" level="project" />
@@ -91,6 +94,7 @@
     <orderEntry type="library" scope="RUNTIME" name="Gradle: com.h2database:h2:2.3.232" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="Gradle: org.checkerframework:checker-qual:3.52.0" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="Gradle: org.junit.platform:junit-platform-engine:1.12.2" level="project" />
+    <orderEntry type="library" scope="RUNTIME" name="Gradle: org.eclipse.angus:angus-activation:2.0.3" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="Gradle: org.junit.jupiter:junit-jupiter-engine:5.12.2" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="Gradle: org.objenesis:objenesis:3.3" level="project" />
   </component>

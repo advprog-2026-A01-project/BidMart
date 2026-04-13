@@ -54,6 +54,12 @@ Open:
 - Frontend: http://localhost:5173
 - Backend: http://localhost:8080
 
+## Optional: (If you want to reset old Database) (all of this run locally)
+```bash
+docker compose down -v
+docker compose up -d db
+```
+
 ---
 
 # RUNNING WITH DOCKER

@@ -20,7 +20,7 @@ export type AuthState = {
 
 export type AuthActions = {
     register: (username: string, password: string, requestedRole?: 'BUYER' | 'SELLER') => Promise<void>
-    verifyEmail: (token: string) => Promise<void>
+    verifyEmail: (token: string, username?: string) => Promise<void>
     login: (username: string, password: string) => Promise<void>
     submitMfa: (code: string) => Promise<void>
     cancelMfa: () => void
