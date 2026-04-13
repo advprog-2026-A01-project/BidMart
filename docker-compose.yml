@@ -5,30 +5,25 @@ services:
       POSTGRES_DB: bidmart
       POSTGRES_USER: bidmart
       POSTGRES_PASSWORD: bidmart
-    ports:
-      - "5433:5432"
     volumes:
       - bidmart_db:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U bidmart -d bidmart"]
       interval: 5s
       timeout: 5s
-      retries: 30
+      retries: 20
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/bidmart
       SPRING_DATASOURCE_USERNAME: bidmart
       SPRING_DATASOURCE_PASSWORD: bidmart
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
-      # opsional: kalau kamu pakai init sql
-      SPRING_SQL_INIT_MODE: always
-    depends_on:
-      db:
-        condition: service_healthy
     ports:
       - "8080:8080"
 
@@ -39,7 +34,6 @@ services:
     depends_on:
       - backend
     ports:
-      # biar sama seperti Vite (localhost:5173)
       - "5173:80"
 
 volumes:
