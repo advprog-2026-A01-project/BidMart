@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="dataSourceStorageLocal" created-in="IU-261.22158.277">
+    <data-source name="bidmart@localhost" uuid="a32af63a-3986-4eab-924c-b2da16c97452">
+      <database-info product="" version="" jdbc-version="" driver-name="" driver-version="" dbms="POSTGRES" />
+      <secret-storage>master_key</secret-storage>
+      <user-name>bidmart</user-name>
+      <schema-mapping />
+    </data-source>
+  </component>
+</project>

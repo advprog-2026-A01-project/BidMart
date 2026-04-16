@@ -1,4 +1,6 @@
 import org.gradle.api.plugins.quality.Pmd
+import org.gradle.api.tasks.Exec
+import org.gradle.api.tasks.Copy
 
 plugins {
     java
@@ -45,6 +47,8 @@ dependencies {
     // add: in-memory DB for tests
     testRuntimeOnly("com.h2database:h2")
 
+    // Untuk mail ngirim kode verifikasi
+    implementation("org.springframework.boot:spring-boot-starter-mail")
 }
 
 tasks.withType<Test> {

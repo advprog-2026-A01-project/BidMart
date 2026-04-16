@@ -7,6 +7,8 @@
 > - Semua credentials di README ini untuk **dev/local aja**.
 
 ---
+## Website BidMart A01 (Deployment on Heroku):
+[BidMart - A01 Website Deployment (Heroku)](https://bidmart-a01-190e4c7e01d5.herokuapp.com/)
 
 ## Project Structure
 - `backend/` — Spring Boot (Java 21) + PostgreSQL + Security/RBAC + PMD + JUnit
@@ -51,6 +53,12 @@ npm run dev
 Open:
 - Frontend: http://localhost:5173
 - Backend: http://localhost:8080
+
+## Optional: (If you want to reset old Database) (all of this run locally)
+```bash
+docker compose down -v
+docker compose up -d db
+```
 
 ---
 

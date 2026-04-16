@@ -1,6 +1,5 @@
 package id.ac.ui.cs.advprog.backend.security;
 
-import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -13,6 +12,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+import jakarta.servlet.http.HttpServletResponse;
 
 @Configuration
 public class SecurityConfig {
@@ -71,6 +72,9 @@ public class SecurityConfig {
 
                         // healthcheck
                         .requestMatchers(HttpMethod.GET, "/api/db/ping").permitAll()
+
+                        // 👇 BERIKAN IZIN AKSES PUBLIK UNTUK FILE FRONTEND 👇
+                        .requestMatchers("/", "/index.html", "/assets/**", "/vite.svg").permitAll()
 
                         .anyRequest().authenticated()
                 )

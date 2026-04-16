@@ -58,7 +58,7 @@ public class AuthPublicController {
     public ResponseEntity<?> verifyEmail(@RequestBody final VerifyEmailRequest body) {
         final String token = (body.token() == null) ? "" : body.token().trim();
         if (token.isBlank()) return ResponseEntity.badRequest().body(Map.of(ERROR_KEY, "invalid_input"));
-        registrationService.verifyEmail(token);
+        registrationService.verifyEmail(normalizeUsername(body.username()), token);
         return ResponseEntity.ok(Map.of("ok", true));
     }
 
@@ -114,7 +114,7 @@ public class AuthPublicController {
             @JsonAlias({"role", "requestedRole"}) String requestedRole
     ) {}
     public record RegisterResponse(boolean ok, String verificationToken) {}
-    public record VerifyEmailRequest(String token) {}
+    public record VerifyEmailRequest(String token, @JsonAlias({"email"}) String username) {}
     public record LoginRequest(@JsonAlias({"email"}) String username, String password) {}
     public record RefreshRequest(String refreshToken) {}
     public record TokenResponse(String accessToken, String refreshToken, String tokenType, long expiresIn) {}
