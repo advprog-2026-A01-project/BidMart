@@ -46,18 +46,23 @@ public class AuthLoginService {
     }
 
     @Transactional
-    public LoginResult login(final String username, final String password, final ClientMeta meta) {
+    public LoginResult login(final String username, final String password, final String privateKey, final ClientMeta meta) {
         final UserAuthRepository.UserRow user = authenticator.authenticate(username, password);
-
         final Instant now = Instant.now(clock);
+
+        if (usesPrivateKeyLogin(user)) {
+            authenticator.verifyPersonalKey(user, privateKey);
+            sessionLimitService.enforce(user.id(), now);
+            final var pair = tokenService.issue(user.id(), now, new AuthTokenService.ClientMeta(meta.userAgent(), meta.ip()));
+            return new LoginResult.Tokens(pair);
+        }
+
         sessionLimitService.enforce(user.id(), now);
 
-        // BUYER / SELLER selalu wajib OTP setiap login
         if (shouldAlwaysRequireOtp(user)) {
             return mfaChallengeService.createChallenge(user, username, now);
         }
 
-        // ADMIN tetap mengikuti flow lama
         if (!user.mfaEnabled()) {
             final var pair = tokenService.issue(user.id(), now, new AuthTokenService.ClientMeta(meta.userAgent(), meta.ip()));
             return new LoginResult.Tokens(pair);
@@ -87,5 +92,12 @@ public class AuthLoginService {
 
     private boolean shouldAlwaysRequireOtp(final UserAuthRepository.UserRow user) {
         return user.role() != null && user.role() != Role.ADMIN;
+    }
+
+    private static boolean usesPrivateKeyLogin(final UserAuthRepository.UserRow user) {
+        return user.role() != null
+                && user.role() != Role.ADMIN
+                && user.personalKeyHash() != null
+                && !user.personalKeyHash().isBlank();
     }
 }

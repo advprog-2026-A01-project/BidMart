@@ -10,6 +10,21 @@ export type TokenResponse = {
 export type RegisterResponse = {
     ok: boolean
     verificationToken: string | null
+    privateKey?: string | null
+    downloadFilename?: string | null
+    downloadContent?: string | null
+    issuedAt?: string | null
+    username?: string | null
+    role?: string | null
+    legalName?: string | null
+}
+
+export type RegisterExtras = {
+    confirmPassword: string
+    legalName: string
+    documentType: 'KTP' | 'KTM'
+    documentFile: File
+    documentExtractedText: string
 }
 
 export type MfaChallengeResponse = {
@@ -21,6 +36,14 @@ export type MfaChallengeResponse = {
 }
 
 export type LoginResponse = TokenResponse | MfaChallengeResponse
+
+export type RotatePrivateKeyResponse = {
+    ok: boolean
+    privateKey: string
+    downloadFilename: string
+    downloadContent: string
+    issuedAt: string
+}
 
 export type MeResponse = {
     username: string
@@ -53,14 +76,35 @@ export type AdminUserRow = {
 
 export type PermissionRow = { key: string; description: string | null }
 
-/* ===== NEW: TOTP ===== */
 export type TotpSetupResponse = {
     ok: boolean
     secret: string
     otpauthUrl: string
 }
 
-export async function register(username: string, password: string, requestedRole?: 'BUYER' | 'SELLER'): Promise<RegisterResponse> {
+export async function register(
+    username: string,
+    password: string,
+    requestedRole?: 'BUYER' | 'SELLER',
+    extras?: RegisterExtras,
+): Promise<RegisterResponse> {
+    if (extras) {
+        const form = new FormData()
+        form.set('username', username)
+        form.set('password', password)
+        form.set('confirmPassword', extras.confirmPassword)
+        form.set('legalName', extras.legalName)
+        form.set('requestedRole', requestedRole ?? 'BUYER')
+        form.set('documentType', extras.documentType)
+        form.set('documentExtractedText', extras.documentExtractedText)
+        form.set('documentImage', extras.documentFile)
+
+        return apiFetch('/api/auth/register', {
+            method: 'POST',
+            body: form,
+        })
+    }
+
     return apiFetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -76,11 +120,11 @@ export async function verifyEmail(token: string, username?: string): Promise<{ o
     })
 }
 
-export async function login(username: string, password: string): Promise<LoginResponse> {
+export async function login(username: string, password: string, privateKey?: string): Promise<LoginResponse> {
     return apiFetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username, password, privateKey }),
     })
 }
 
@@ -100,7 +144,10 @@ export async function disable2fa(accessToken: string): Promise<{ ok: boolean }> 
     return apiFetch('/api/auth/2fa/disable', { method: 'POST', accessToken })
 }
 
-/* ===== NEW: TOTP endpoints ===== */
+export async function rotatePrivateKey(accessToken: string): Promise<RotatePrivateKeyResponse> {
+    return apiFetch('/api/auth/2fa/private-key/rotate', { method: 'POST', accessToken })
+}
+
 export async function totpSetup(accessToken: string): Promise<TotpSetupResponse> {
     return apiFetch('/api/auth/2fa/totp/setup', { method: 'POST', accessToken })
 }
@@ -159,7 +206,6 @@ export async function updateMyProfile(accessToken: string, profile: UserProfile)
     })
 }
 
-/* ===== Admin: users ===== */
 export async function adminListUsers(accessToken: string): Promise<AdminUserRow[]> {
     return apiFetch('/api/admin/users', { accessToken })
 }
@@ -189,7 +235,6 @@ export async function adminDeleteUser(accessToken: string, id: number): Promise<
     })
 }
 
-/* ===== Admin: RBAC ===== */
 export async function adminListRoles(accessToken: string): Promise<string[]> {
     return apiFetch('/api/admin/rbac/roles', { accessToken })
 }

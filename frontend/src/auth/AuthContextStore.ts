@@ -18,14 +18,22 @@ export type AuthState = {
     pendingMfa: PendingMfa | null
 }
 
+export type RegisterInput = {
+    username: string
+    password: string
+    requestedRole?: 'BUYER' | 'SELLER'
+    extras?: AuthApi.RegisterExtras
+}
+
 export type AuthActions = {
-    register: (username: string, password: string, requestedRole?: 'BUYER' | 'SELLER') => Promise<void>
+    register: (input: RegisterInput) => Promise<AuthApi.RegisterResponse>
     verifyEmail: (token: string, username?: string) => Promise<void>
-    login: (username: string, password: string) => Promise<void>
+    login: (username: string, password: string, privateKey?: string) => Promise<AuthApi.LoginResponse>
     submitMfa: (code: string) => Promise<void>
     cancelMfa: () => void
     enable2faEmail: () => Promise<void>
     disable2fa: () => Promise<void>
+    rotatePrivateKey: () => Promise<AuthApi.RotatePrivateKeyResponse>
     becomeSeller: () => Promise<void>
     logout: () => Promise<void>
     refresh: () => Promise<void>

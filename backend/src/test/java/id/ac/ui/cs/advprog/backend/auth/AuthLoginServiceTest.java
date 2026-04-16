@@ -74,7 +74,8 @@ class AuthLoginServiceTest {
         // ===== Scenario A: login returns MFA required (EMAIL) =====
         final var user = new UserAuthRepository.UserRow(
                 1L, "u", "hash", Role.BUYER,
-                false, true, true, "EMAIL", null
+                false, true, true, "EMAIL", null,
+                null, null, null, null, null
         );
 
         when(userAuthRepository.findByUsername("u")).thenReturn(Optional.of(user));
@@ -85,7 +86,12 @@ class AuthLoginServiceTest {
         final UUID challengeId = UUID.randomUUID();
         when(mfaChallengeRepository.createEmailChallenge(eq(1L), eq("otpHash"), any(Instant.class))).thenReturn(challengeId);
 
-        final var out = loginService.login("u", "p", new AuthLoginService.ClientMeta("ua", "client"));
+        final var out = loginService.login(
+                "u",
+                "p",
+                null,
+                new AuthLoginService.ClientMeta("ua", "client")
+        );
 
         final boolean loginOk = (out instanceof AuthLoginService.LoginResult.MfaRequired m)
                 && challengeId.equals(m.challengeId())

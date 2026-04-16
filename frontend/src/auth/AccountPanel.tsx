@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { extractIdentityText, extractLikelyIdentityName, exactIdentityNameMatches, formatOcrProgress } from './ocr'
+import { useEffect, useMemo, useState } from 'react'
+import { normalizeError } from './error'
 import type { CSSProperties } from 'react'
 import * as Api from '../api/auth'
 import { useAuth } from './useAuth'
@@ -6,6 +8,7 @@ import './AccountPanel.css'
 
 type Tab = 'auth' | 'profile' | 'admin'
 type AuthMode = 'login' | 'register'
+type LoginStep = 'credentials' | 'privateKey' | 'otp'
 
 function EyeIcon({ open }: { open: boolean }) {
     return open ? (
@@ -45,6 +48,22 @@ function prettyErrorMessage(raw: string | null | undefined): string {
             return 'Admin tidak bisa menghapus akun sendiri.'
         case 'cannot_delete_admin':
             return 'Akun admin tidak boleh dihapus.'
+        case 'password_mismatch':
+            return 'Password dan tulis ulang password tidak sama.'
+        case 'password_too_short':
+            return 'Password minimal 8 karakter.'
+        case 'identity_document_required':
+            return 'Foto KTP/KTM wajib diupload.'
+        case 'identity_document_invalid':
+            return 'Dokumen tidak valid. Gunakan file gambar KTP/KTM yang jelas.'
+        case 'identity_name_mismatch':
+            return 'Nama pada isi foto KTP/KTM tidak cocok dengan nama yang diinput.'
+        case 'ocr_text_missing':
+            return 'Teks hasil OCR dari foto KTP/KTM belum ada.'
+        case 'private_key_required':
+            return 'Private key wajib diisi untuk login.'
+        case 'invalid_private_key':
+            return 'Private key yang dimasukkan salah.'
         default:
             return value ? value.replaceAll('_', ' ') : 'Terjadi kesalahan. Silakan coba lagi.'
     }
@@ -55,7 +74,7 @@ export function AccountPanel() {
         user, tokens, loading, error,
         lastVerificationToken, pendingMfa,
         register, verifyEmail, login, submitMfa, cancelMfa,
-        becomeSeller, logout,
+        rotatePrivateKey, becomeSeller, logout,
     } = useAuth()
 
     const accessToken = tokens?.accessToken ?? null
@@ -70,9 +89,20 @@ export function AccountPanel() {
     const [requestedRole, setRequestedRole] = useState<'BUYER' | 'SELLER'>('BUYER')
     const [verifyToken, setVerifyToken] = useState('')
     const [otp, setOtp] = useState('')
+    const [confirmPassword, setConfirmPassword] = useState('')
+    const [loginPrivateKey, setLoginPrivateKey] = useState('')
+    const [legalName, setLegalName] = useState('')
+    const [detectedIdentityName, setDetectedIdentityName] = useState('')
 
-    const [toast, setToast] = useState<{ type: 'error'; message: string } | null>(null)
-    const didInitErrorEffect = useRef(false)
+    const [documentType, setDocumentType] = useState<'KTP' | 'KTM'>('KTP')
+    const [documentFile, setDocumentFile] = useState<File | null>(null)
+    const [ocrText, setOcrText] = useState('')
+    const [ocrProgress, setOcrProgress] = useState<{ status: string; progress: number } | null>(null)
+    const [isScanningDocument, setIsScanningDocument] = useState(false)
+    const [loginStep, setLoginStep] = useState<LoginStep>('credentials')
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
+    const [toast, setToast] = useState<{ type: 'error' | 'success'; message: string } | null>(null)
 
     const [profile, setProfile] = useState<Api.UserProfile>({
         displayName: null,
@@ -97,41 +127,213 @@ export function AccountPanel() {
 
     const canCall = !!accessToken
 
+    const detectedNameVerified = legalName.trim() && ocrText.trim()
+        ? exactIdentityNameMatches(legalName, ocrText)
+        : false
+
+    function downloadPrivateKeyFile(filename: string | null | undefined, content: string | null | undefined) {
+        if (!filename || !content) {
+            return
+        }
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = filename
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        URL.revokeObjectURL(url)
+    }
+
+    async function scanIdentityDocument(fileOverride?: File | null): Promise<string> {
+        const targetFile = fileOverride ?? documentFile
+        if (!targetFile) {
+            setToast({ type: 'error', message: 'Pilih foto KTP/KTM terlebih dahulu.' })
+            return ''
+        }
+
+        setIsScanningDocument(true)
+        setOcrProgress({ status: 'starting', progress: 0 })
+
+        try {
+            const extracted = await extractIdentityText(targetFile, setOcrProgress)
+            setOcrText(extracted)
+
+            const detectedName = extractLikelyIdentityName(extracted, documentType)
+            setDetectedIdentityName(detectedName)
+            setLegalName(detectedName)
+
+            if (!detectedName.trim()) {
+                setToast({
+                    type: 'error',
+                    message: 'OCR berhasil, tetapi nama belum bisa dideteksi dengan yakin. Coba foto yang lebih jelas.',
+                })
+            } else if (!exactIdentityNameMatches(detectedName, extracted)) {
+                setToast({
+                    type: 'error',
+                    message: 'Nama terdeteksi, tetapi belum bisa diverifikasi secara persis dari hasil OCR.',
+                })
+            } else {
+                setToast({
+                    type: 'success',
+                    message: `Nama terdeteksi dari dokumen: ${detectedName}`,
+                })
+            }
+
+            return extracted
+        } catch {
+            setToast({ type: 'error', message: 'OCR gagal diproses di browser. Coba gunakan foto yang lebih jelas.' })
+            setOcrText('')
+            setDetectedIdentityName('')
+            setLegalName('')
+            return ''
+        } finally {
+            setIsScanningDocument(false)
+        }
+    }
+
     async function onRegister() {
-        await register(username, password, requestedRole)
-        setAuthMode('register')
-        setVerifyToken('')
+        const extracted = ocrText || await scanIdentityDocument(documentFile)
+        if (!documentFile || !extracted) {
+            return
+        }
+
+        if (!legalName.trim()) {
+            setToast({
+                type: 'error',
+                message: 'Nama dari dokumen belum berhasil dideteksi. Scan ulang dengan foto yang lebih jelas.',
+            })
+            return
+        }
+
+        if (!exactIdentityNameMatches(legalName, extracted)) {
+            setToast({
+                type: 'error',
+                message: 'Nama terdeteksi belum cocok secara persis dengan hasil OCR dokumen.',
+            })
+            return
+        }
+
+        const response = await register({
+            username,
+            password,
+            requestedRole,
+            extras: {
+                confirmPassword,
+                legalName,
+                documentType,
+                documentFile,
+                documentExtractedText: extracted,
+            },
+        })
+
+        downloadPrivateKeyFile(response.downloadFilename ?? null, response.downloadContent ?? null)
+        setLoginPrivateKey(response.privateKey ?? '')
+        setAuthMode('login')
+        setConfirmPassword('')
+        setDocumentFile(null)
+        setOcrText('')
+        setDetectedIdentityName('')
+        setToast({
+            type: 'success',
+            message: 'Registrasi berhasil. Nama diambil dari hasil OCR dokumen dan private key otomatis terunduh.',
+        })
     }
 
     async function onVerifyEmail() {
         await verifyEmail(verifyToken.trim(), username)
         setVerifyToken('')
+        setToast({ type: 'success', message: 'Verifikasi email berhasil.' })
     }
 
     async function onLogin() {
         setOtp('')
-        await login(username, password)
+
+        if (loginStep === 'privateKey') {
+            try {
+                const response = await login(username, password, loginPrivateKey)
+
+                if ('accessToken' in response) {
+                    setLoginStep('credentials')
+                    setToast({ type: 'success', message: 'Login berhasil.' })
+                } else {
+                    setLoginStep('otp')
+                    setToast({ type: 'success', message: 'Masukkan OTP untuk melanjutkan login.' })
+                }
+            } catch {
+                // toast error akan ditangani oleh effect error global
+            }
+            return
+        }
+
+        try {
+            const response = await login(username, password)
+
+            if ('accessToken' in response) {
+                setLoginStep('credentials')
+                setToast({ type: 'success', message: 'Login berhasil.' })
+            } else {
+                setLoginStep('otp')
+                setToast({ type: 'success', message: 'Masukkan OTP untuk melanjutkan login.' })
+            }
+        } catch (e) {
+            const code = normalizeError(e)
+
+            if (code === 'private_key_required') {
+                setLoginStep('privateKey')
+                setLoginPrivateKey('')
+                setToast({ type: 'success', message: 'Akun ini memerlukan private key. Masukkan private key untuk melanjutkan login.' })
+            }
+        }
+    }
+
+    function backToCredentialStep() {
+        setLoginStep('credentials')
+        setLoginPrivateKey('')
+        setOtp('')
+        setToast(null)
+    }
+
+    function backToLoginMode() {
+        setAuthMode('login')
+        setLoginStep('credentials')
+        setLoginPrivateKey('')
+        setOtp('')
+        setToast(null)
     }
 
     async function onVerifyOtp() {
         await submitMfa(otp.trim())
         setOtp('')
+        setToast({ type: 'success', message: 'OTP valid. Login berhasil.' })
+    }
+
+    async function onRotatePrivateKey() {
+        const response = await rotatePrivateKey()
+        downloadPrivateKeyFile(response.downloadFilename, response.downloadContent)
+        setLoginPrivateKey(response.privateKey)
+        setToast({ type: 'success', message: 'Private key baru berhasil dibuat dan otomatis terunduh.' })
     }
 
     async function onLogout() {
         setUsername('')
         setPassword('')
+        setConfirmPassword('')
+        setLoginPrivateKey('')
         setShowPassword(false)
         setVerifyToken('')
         setOtp('')
-        setToast(null)
         setAuthMode('login')
         setTab('auth')
         await logout()
+        setToast({ type: 'success', message: 'Logout berhasil.' })
     }
 
     const showVerifyBox = authMode === 'register' && !!lastVerificationToken
-    const showLoginMfaBox = authMode === 'login' && !!pendingMfa
+    const showPrivateKeyStep = authMode === 'login' && loginStep === 'privateKey' && !pendingMfa
+    const showLoginMfaBox = authMode === 'login' && (loginStep === 'otp' || !!pendingMfa)
+    const showLoginCredentialsStep = authMode === 'login' && !showPrivateKeyStep && !showLoginMfaBox
 
     async function loadProfile() {
         if (!accessToken) return
@@ -151,6 +353,7 @@ export function AccountPanel() {
         try {
             await Api.updateMyProfile(accessToken, profile)
             setProfileMsg('saved')
+            setToast({ type: 'success', message: 'Profile berhasil disimpan.' })
         } catch {
             setProfileMsg('failed')
         }
@@ -312,6 +515,10 @@ export function AccountPanel() {
 
     useEffect(() => {
         setShowPassword(false)
+        setShowConfirmPassword(false)
+        setLoginStep('credentials')
+        setLoginPrivateKey('')
+        setOtp('')
         setToast(null)
     }, [authMode])
 
@@ -319,20 +526,19 @@ export function AccountPanel() {
         if (user) return
         setUsername('')
         setPassword('')
+        setConfirmPassword('')
         setShowPassword(false)
+        setShowConfirmPassword(false)
         setVerifyToken('')
         setOtp('')
-        setToast(null)
+        setLoginPrivateKey('')
+        setLoginStep('credentials')
+        setOcrText('')
+        setOcrProgress(null)
     }, [user])
 
     useEffect(() => {
-        if (!didInitErrorEffect.current) {
-            didInitErrorEffect.current = true
-            return
-        }
-
         if (!error) {
-            setToast(null)
             return
         }
 
@@ -340,13 +546,15 @@ export function AccountPanel() {
             type: 'error',
             message: prettyErrorMessage(error),
         })
-
-        const timer = window.setTimeout(() => {
-            setToast(null)
-        }, 3500)
-
-        return () => window.clearTimeout(timer)
     }, [error])
+
+    useEffect(() => {
+        if (!toast) {
+            return
+        }
+        const timer = window.setTimeout(() => setToast(null), 4200)
+        return () => window.clearTimeout(timer)
+    }, [toast])
 
     const tabs = useMemo(() => {
         const base: { key: Tab; label: string; show: boolean }[] = [
@@ -376,10 +584,10 @@ export function AccountPanel() {
                 <div style={{ ...card, position: 'relative' }} className="ap-card">
                     {toast ? (
                         <div className="ap-toastWrap">
-                            <div role="alert" aria-live="assertive" className="ap-toast ap-toastError">
-                                <div className="ap-toastIcon">⚠️</div>
+                            <div role="alert" aria-live="assertive" className={`ap-toast ${toast.type === 'success' ? 'ap-toastSuccess' : 'ap-toastError'}`}>
+                                <div className="ap-toastIcon">{toast.type === 'success' ? '✅' : '⚠️'}</div>
                                 <div className="ap-toastBody">
-                                    <div className="ap-toastTitle">Error</div>
+                                    <div className="ap-toastTitle">{toast.type === 'success' ? 'Berhasil' : 'Error'}</div>
                                     <div className="ap-toastText">{toast.message}</div>
                                 </div>
                                 <button
@@ -422,72 +630,239 @@ export function AccountPanel() {
                                 </div>
 
                                 <div className="ap-authFields">
-                                    <label className="ap-field">
-                                        <span className="ap-label">Username / Email</span>
-                                        <input
-                                            value={username}
-                                            onChange={(e) => {
-                                                setUsername(e.target.value)
-                                                setVerifyToken('')
-                                                setOtp('')
-                                                setToast(null)
-                                            }}
-                                            placeholder="Masukkan username atau email"
-                                        />
-                                    </label>
-
-                                    <label className="ap-field">
-                                        <span className="ap-label">Password</span>
-                                        <div className="ap-passwordWrap">
-                                            <input
-                                                type={showPassword ? 'text' : 'password'}
-                                                value={password}
-                                                onChange={(e) => {
-                                                    setPassword(e.target.value)
-                                                    setToast(null)
-                                                }}
-                                                className="ap-passwordInput"
-                                                placeholder="Masukkan password"
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowPassword(v => !v)}
-                                                aria-label={showPassword ? 'Hide password' : 'Show password'}
-                                                title={showPassword ? 'Hide password' : 'Show password'}
-                                                className="ap-eyeBtn"
-                                            >
-                                                <EyeIcon open={showPassword} />
-                                            </button>
-                                        </div>
-                                    </label>
-
                                     {authMode === 'register' ? (
-                                        <label className="ap-field">
-                                            <span className="ap-label">Register as</span>
-                                            <select
-                                                value={requestedRole}
-                                                onChange={(e) => {
-                                                    const v = e.target.value
-                                                    setRequestedRole(v === 'SELLER' ? 'SELLER' : 'BUYER')
-                                                }}
-                                            >
-                                                <option value="BUYER">Buyer</option>
-                                                <option value="SELLER">Seller</option>
-                                            </select>
-                                        </label>
+                                        <>
+                                            <label className="ap-field">
+                                                <span className="ap-label">Username / Email</span>
+                                                <input
+                                                    value={username}
+                                                    onChange={(e) => {
+                                                        setUsername(e.target.value)
+                                                        setVerifyToken('')
+                                                        setToast(null)
+                                                    }}
+                                                    placeholder="Masukkan username atau email"
+                                                />
+                                            </label>
+
+                                            <label className="ap-field">
+                                                <span className="ap-label">Password</span>
+                                                <div className="ap-passwordWrap">
+                                                    <input
+                                                        type={showPassword ? 'text' : 'password'}
+                                                        value={password}
+                                                        onChange={(e) => {
+                                                            setPassword(e.target.value)
+                                                            setToast(null)
+                                                        }}
+                                                        className="ap-passwordInput"
+                                                        placeholder="Masukkan password"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowPassword(v => !v)}
+                                                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                                        title={showPassword ? 'Hide password' : 'Show password'}
+                                                        className="ap-eyeBtn"
+                                                    >
+                                                        <EyeIcon open={showPassword} />
+                                                    </button>
+                                                </div>
+                                            </label>
+
+                                            <label className="ap-field">
+                                                <span className="ap-label">Tulis ulang password</span>
+                                                <div className="ap-passwordWrap">
+                                                    <input
+                                                        type={showConfirmPassword ? 'text' : 'password'}
+                                                        value={confirmPassword}
+                                                        onChange={(e) => setConfirmPassword(e.target.value)}
+                                                        className="ap-passwordInput"
+                                                        placeholder="Ulangi password"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowConfirmPassword(v => !v)}
+                                                        aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                                                        title={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                                                        className="ap-eyeBtn"
+                                                    >
+                                                        <EyeIcon open={showConfirmPassword} />
+                                                    </button>
+                                                </div>
+                                            </label>
+
+                                            <label className="ap-field">
+                                                <span className="ap-label">Nama terdeteksi dari {documentType}</span>
+                                                <input
+                                                    value={legalName}
+                                                    readOnly
+                                                    placeholder={`Klik "Scan isi foto" untuk isi otomatis`}
+                                                />
+                                            </label>
+
+                                            <label className="ap-field">
+                                                <span className="ap-label">Register as</span>
+                                                <select
+                                                    value={requestedRole}
+                                                    onChange={(e) => {
+                                                        const v = e.target.value
+                                                        setRequestedRole(v === 'SELLER' ? 'SELLER' : 'BUYER')
+                                                    }}
+                                                >
+                                                    <option value="BUYER">Buyer</option>
+                                                    <option value="SELLER">Seller</option>
+                                                </select>
+                                            </label>
+
+                                            <label className="ap-field">
+                                                <span className="ap-label">Jenis dokumen</span>
+                                                <select
+                                                    value={documentType}
+                                                    onChange={(e) => setDocumentType(e.target.value === 'KTM' ? 'KTM' : 'KTP')}
+                                                >
+                                                    <option value="KTP">KTP</option>
+                                                    <option value="KTM">KTM</option>
+                                                </select>
+                                            </label>
+
+                                            <label className="ap-field">
+                                                <span className="ap-label">Upload foto {documentType}</span>
+                                                <input
+                                                    type="file"
+                                                    accept="image/png,image/jpeg,image/jpg,image/webp"
+                                                    onChange={(e) => {
+                                                        const nextFile = e.target.files?.[0] ?? null
+                                                        setDocumentFile(nextFile)
+                                                        setOcrText('')
+                                                        setOcrProgress(null)
+                                                        setDetectedIdentityName('')
+                                                        setLegalName('')
+                                                    }}
+                                                />
+                                            </label>
+
+                                            <div className="ap-subcard ap-registerDocCard" style={subcard}>
+                                                <div className="ap-subcardTitle">Deteksi nama dari isi foto {documentType}</div>
+                                                <div className="ap-helpText ap-helpInfo">
+                                                    OCR akan membaca isi foto {documentType}, lalu sistem akan mengisi nama otomatis dari hasil pembacaan dokumen.
+                                                </div>
+
+                                                <div className="ap-inlineRow ap-toolbarRow" style={{ marginTop: 10 }}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => void scanIdentityDocument()}
+                                                        disabled={loading || isScanningDocument || !documentFile}
+                                                    >
+                                                        {isScanningDocument ? 'Scanning...' : 'Scan isi foto'}
+                                                    </button>
+                                                    <span className="ap-statusText">{formatOcrProgress(ocrProgress)}</span>
+                                                </div>
+
+                                                <textarea
+                                                    value={ocrText}
+                                                    onChange={(e) => setOcrText(e.target.value)}
+                                                    placeholder="Hasil OCR dari isi foto akan muncul di sini"
+                                                    rows={4}
+                                                />
+
+                                                {legalName.trim() ? (
+                                                    <div className={`ap-helpText ${detectedNameVerified ? 'ap-helpOk' : 'ap-helpWarn'}`} style={{ marginTop: 8 }}>
+                                                        {detectedNameVerified
+                                                            ? `Nama terdeteksi dan tervalidasi: ${legalName}`
+                                                            : 'Nama sudah terdeteksi, tetapi belum tervalidasi secara persis dari hasil OCR.'}
+                                                    </div>
+                                                ) : null}
+                                            </div>
+                                        </>
+                                    ) : showLoginCredentialsStep ? (
+                                        <>
+                                            <label className="ap-field">
+                                                <span className="ap-label">Username / Email</span>
+                                                <input
+                                                    value={username}
+                                                    onChange={(e) => {
+                                                        setUsername(e.target.value)
+                                                        setVerifyToken('')
+                                                        setOtp('')
+                                                        setLoginPrivateKey('')
+                                                        setLoginStep('credentials')
+                                                        setToast(null)
+                                                    }}
+                                                    placeholder="Masukkan username atau email"
+                                                />
+                                            </label>
+
+                                            <label className="ap-field">
+                                                <span className="ap-label">Password</span>
+                                                <div className="ap-passwordWrap">
+                                                    <input
+                                                        type={showPassword ? 'text' : 'password'}
+                                                        value={password}
+                                                        onChange={(e) => {
+                                                            setPassword(e.target.value)
+                                                            setLoginPrivateKey('')
+                                                            setLoginStep('credentials')
+                                                            setToast(null)
+                                                        }}
+                                                        className="ap-passwordInput"
+                                                        placeholder="Masukkan password"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowPassword(v => !v)}
+                                                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                                        title={showPassword ? 'Hide password' : 'Show password'}
+                                                        className="ap-eyeBtn"
+                                                    >
+                                                        <EyeIcon open={showPassword} />
+                                                    </button>
+                                                </div>
+                                            </label>
+                                        </>
+                                    ) : showPrivateKeyStep ? (
+                                        <div style={subcard} className="ap-authSubcard">
+                                            <div className="ap-subcardTitle">Masukkan Private Key</div>
+                                            <div className="ap-helpText ap-helpInfo">
+                                                Akun ini membutuhkan private key setelah username dan password tervalidasi.
+                                            </div>
+
+                                            <label className="ap-field" style={{ marginTop: 12 }}>
+                                                <span className="ap-label">Private Key</span>
+                                                <input
+                                                    value={loginPrivateKey}
+                                                    onChange={(e) => {
+                                                        setLoginPrivateKey(e.target.value)
+                                                        setToast(null)
+                                                    }}
+                                                    placeholder="Contoh: BMK1-ABCD-EFGH-2345"
+                                                    autoComplete="one-time-code"
+                                                />
+                                            </label>
+
+                                            <div className="ap-inlineRow" style={{ marginTop: 12 }}>
+                                                <button type="button" onClick={backToCredentialStep} disabled={loading}>
+                                                    Kembali
+                                                </button>
+                                            </div>
+                                        </div>
                                     ) : null}
                                 </div>
 
                                 <div className="ap-authSubmit">
                                     {authMode === 'register' ? (
-                                        <button onClick={() => void onRegister()} disabled={loading} className="ap-primaryBtn">
+                                        <button onClick={() => void onRegister()} disabled={loading || isScanningDocument} className="ap-primaryBtn">
                                             Register
                                         </button>
-                                    ) : (
+                                    ) : showPrivateKeyStep ? (
+                                        <button onClick={() => void onLogin()} disabled={loading || !loginPrivateKey.trim()} className="ap-primaryBtn">
+                                            Lanjutkan Login
+                                        </button>
+                                    ) : showLoginCredentialsStep ? (
                                         <button onClick={() => void onLogin()} disabled={loading} className="ap-primaryBtn">
                                             Login
                                         </button>
-                                    )}
+                                    ) : null}
                                 </div>
 
                                 {showVerifyBox ? (
@@ -517,7 +892,7 @@ export function AccountPanel() {
 
                                 {showLoginMfaBox ? (
                                     <div style={subcard} className="ap-authSubcard">
-                                        <div className="ap-subcardTitle">2FA required ({pendingMfa?.method})</div>
+                                        <div className="ap-subcardTitle">Verifikasi OTP</div>
                                         <div className="ap-helpText ap-helpInfo">
                                             Login membutuhkan OTP. Masukkan kode OTP untuk melanjutkan.
                                         </div>
@@ -536,7 +911,13 @@ export function AccountPanel() {
                                             <button onClick={() => void onVerifyOtp()} disabled={loading || !otp.trim()}>
                                                 Verify OTP
                                             </button>
-                                            <button onClick={cancelMfa} disabled={loading}>
+                                            <button
+                                                onClick={() => {
+                                                    cancelMfa()
+                                                    backToLoginMode()
+                                                }}
+                                                disabled={loading}
+                                            >
                                                 Cancel
                                             </button>
                                         </div>
@@ -553,9 +934,16 @@ export function AccountPanel() {
 
                             <div className="ap-inlineRow ap-primaryActions">
                                 <button onClick={() => void onLogout()} disabled={loading}>Logout</button>
+                                {user.role !== 'ADMIN' && (
+                                    <button onClick={() => void onRotatePrivateKey()} disabled={loading}>
+                                        Rotate & download private key
+                                    </button>
+                                )}
+
                                 {user.role === 'BUYER' && (
                                     <button onClick={() => void becomeSeller()} disabled={loading}>Become a Seller</button>
                                 )}
+
                             </div>
                         </>
                     )}

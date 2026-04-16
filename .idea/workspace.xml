@@ -4,7 +4,29 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="12a7340f-7112-42f3-875c-d91c8de1856c" name="Changes" comment="" />
+    <list default="true" id="12a7340f-7112-42f3-875c-d91c8de1856c" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/api/AuthMfaController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/api/AuthMfaController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/api/AuthPublicController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/api/AuthPublicController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/model/AuthException.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/model/AuthException.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/repository/UserAuthRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/repository/UserAuthRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/service/AuthLoginService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/service/AuthLoginService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/service/AuthRegistrationService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/service/AuthRegistrationService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/service/ClientOcrIdentityDocumentValidationService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/service/ClientOcrIdentityDocumentValidationService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/service/UserAuthenticator.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/service/UserAuthenticator.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/resources/application.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/resources/schema.sql" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/resources/schema.sql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/test/java/id/ac/ui/cs/advprog/backend/auth/AuthLoginServiceTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/test/java/id/ac/ui/cs/advprog/backend/auth/AuthLoginServiceTest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/docker-compose.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/api/auth.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/api/auth.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/auth/AccountPanel.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/auth/AccountPanel.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/auth/AccountPanel.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/auth/AccountPanel.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/auth/AuthContext.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/auth/AuthContext.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/auth/AuthContextStore.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/auth/AuthContextStore.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/auth/AuthPanel.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/auth/AuthPanel.tsx" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -20,18 +42,25 @@
       <list>
         <option value="Interface" />
         <option value="Class" />
+        <option value="TypeScript File" />
       </list>
     </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "https://github.com/advprog-2026-A01-project/BidMart.git",
-    "accountId": "e84a58a9-79b3-4a58-8ca9-b2aeb4b78d48"
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;CerebrumCoder&quot;
   }
-}]]></component>
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/advprog-2026-A01-project/BidMart.git&quot;,
+    &quot;accountId&quot;: &quot;e84a58a9-79b3-4a58-8ca9-b2aeb4b78d48&quot;
+  }
+}</component>
   <component name="HighlightingSettingsPerFile">
     <setting file="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-devtools/3.5.11/14db14e66db0c3a77597db3ed37dc6d8a8a41099/spring-boot-devtools-3.5.11-sources.jar!/org/springframework/boot/devtools/autoconfigure/OptionalLiveReloadServer.java" root0="FORCE_HIGHLIGHTING" />
   </component>
@@ -39,16 +68,33 @@
     <option name="selectedTabId" value="CurrentFile" />
     <option name="showPreview" value="true" />
   </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 2,
+  &quot;fromUser&quot;: false
+}</component>
+  <component name="ProjectId" id="3CJ8N0DMgLiujJm0kbwUcvQEohs" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "git-widget-placeholder": "feat/auth",
-    "ts.external.directory.path": "/snap/intellij-idea-ultimate/742/plugins/javascript-plugin/jsLanguageServicesImpl/external"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;feat/auth&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;/snap/intellij-idea-ultimate/742/plugins/javascript-plugin/jsLanguageServicesImpl/external&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager">
     <configuration name="BackendApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
       <option name="FRAME_DEACTIVATION_UPDATE_POLICY" value="UpdateClassesAndResources" />
@@ -60,6 +106,18 @@
     </configuration>
   </component>
   <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="12a7340f-7112-42f3-875c-d91c8de1856c" name="Changes" comment="" />
+      <created>1776092270824</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1776092270824</updated>
+      <workItem from="1776092271876" duration="11829000" />
+      <workItem from="1776237068039" duration="1361000" />
+    </task>
     <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
   </component>
 </project>

@@ -1,14 +1,16 @@
 package id.ac.ui.cs.advprog.backend.auth.service;
 
 import id.ac.ui.cs.advprog.backend.auth.model.AuthException;
+import java.text.Normalizer;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.Arrays;
-import java.util.Locale;
-
 @Service
 public class ClientOcrIdentityDocumentValidationService implements IdentityDocumentValidationService {
+
     private static final long MAX_UPLOAD_BYTES = 5L * 1024L * 1024L;
 
     @Override
@@ -18,8 +20,8 @@ public class ClientOcrIdentityDocumentValidationService implements IdentityDocum
             final String ocrText,
             final MultipartFile documentImage
     ) {
-        final String normalizedName = normalize(legalName);
-        final String normalizedOcr = normalize(ocrText);
+        final String normalizedName = normalizeStrict(legalName);
+        final String normalizedOcr = normalizeStrict(ocrText);
         final String normalizedType = normalizeDocType(documentType);
 
         if (documentImage == null || documentImage.isEmpty()) {
@@ -43,35 +45,33 @@ public class ClientOcrIdentityDocumentValidationService implements IdentityDocum
         if (normalizedOcr.isBlank()) {
             throw AuthException.ocrTextMissing();
         }
-        if (!containsAllNameTokens(normalizedName, normalizedOcr)) {
+        if (!containsAllNameTokensStrict(normalizedName, normalizedOcr)) {
             throw AuthException.identityNameMismatch();
         }
 
         return new VerifiedIdentityDocument(normalizedName, normalizedOcr, normalizedType);
     }
 
-    // Method for checking identityName match or not?
-    private static boolean containsAllNameTokens(final String normalizedName, final String normalizedOcr) {
-        final String[] tokens = Arrays.stream(normalizedName.split(" "))
+    private static boolean containsAllNameTokensStrict(final String normalizedName, final String normalizedOcr) {
+        final List<String> nameTokens = Arrays.stream(normalizedName.split(" "))
                 .map(String::trim)
                 .filter(s -> !s.isBlank())
                 .filter(s -> s.length() >= 2)
-                .toArray(String[]::new);
+                .toList();
 
-        if (tokens.length == 0) {
+        final List<String> ocrTokens = Arrays.stream(normalizedOcr.split(" "))
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .filter(s -> s.length() >= 2)
+                .toList();
+
+        if (nameTokens.isEmpty() || ocrTokens.isEmpty()) {
             return false;
         }
 
-        int matched = 0;
-        for (String token: tokens) {
-            if (normalizedOcr.contains(token)) {
-                matched++;
-            }
-        }
-        return matched == tokens.length;
+        return nameTokens.stream().allMatch(ocrTokens::contains);
     }
 
-    // Method for normalizing doc type
     private static String normalizeDocType(final String raw) {
         final String normalized = safe(raw).trim().toUpperCase(Locale.ROOT);
         if (!"KTP".equals(normalized) && !"KTM".equals(normalized)) {
@@ -80,16 +80,16 @@ public class ClientOcrIdentityDocumentValidationService implements IdentityDocum
         return normalized;
     }
 
-    // Method for normalizing the String file name
-    private static String normalize(final String raw) {
-        return safe(raw)
-                .toUpperCase(Locale.ROOT)
-                .replaceAll("[^A-Z0-9 ]", " ")
+    private static String normalizeStrict(final String raw) {
+        final String noAccent = Normalizer.normalize(safe(raw), Normalizer.Form.NFKD)
+                .replaceAll("\\p{M}", "");
+
+        return noAccent
+                .replaceAll("[^A-Za-z0-9 ]", " ")
                 .replaceAll("\\s+", " ")
                 .trim();
     }
 
-    // Method for checking whether the filename is null or not
     private static String safe(final String raw) {
         return (raw == null) ? "" : raw;
     }

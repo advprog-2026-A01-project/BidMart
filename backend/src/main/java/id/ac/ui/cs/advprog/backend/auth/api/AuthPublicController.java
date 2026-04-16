@@ -12,8 +12,10 @@ import java.time.Duration;
 import java.util.Locale;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -38,7 +40,7 @@ public class AuthPublicController {
         this.props = props;
     }
 
-    @PostMapping("/register")
+    @PostMapping(value = "/register", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> register(@RequestBody final RegisterRequest body) {
         final String username = normalizeUsername(body.username());
         final String password = (body.password() == null) ? "" : body.password();
@@ -48,10 +50,51 @@ public class AuthPublicController {
         }
 
         final Role role = parseRequestedRole(body.requestedRole());
-        if (role == null) return ResponseEntity.badRequest().body(Map.of(ERROR_KEY, "invalid_role"));
+        if (role == null) {
+            return ResponseEntity.badRequest().body(Map.of(ERROR_KEY, "invalid_role"));
+        }
 
         final var token = registrationService.register(username, password, role);
-        return ResponseEntity.status(HttpStatus.CREATED).body(new RegisterResponse(true, token.toString()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(new RegisterResponse(true, token.toString(), null, null, null, null, null, null, null));
+    }
+
+    @PostMapping(value = "/register", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> registerWithIdentity(
+            @RequestParam("username") final String username,
+            @RequestParam("password") final String password,
+            @RequestParam("confirmPassword") final String confirmPassword,
+            @RequestParam("legalName") final String legalName,
+            @RequestParam(value = "requestedRole", required = false) final String requestedRole,
+            @RequestParam("documentType") final String documentType,
+            @RequestParam("documentExtractedText") final String documentExtractedText,
+            @RequestPart("documentImage") final MultipartFile documentImage
+    ) {
+        final Role role = parseRequestedRole(requestedRole);
+        if (role == null) {
+            return ResponseEntity.badRequest().body(Map.of(ERROR_KEY, "invalid_role"));
+        }
+
+        final var result = registrationService.registerWithIdentity(
+                normalizeUsername(username),
+                password,
+                confirmPassword,
+                legalName,
+                role,
+                documentType,
+                documentExtractedText,
+                documentImage
+        );
+        return ResponseEntity.status(HttpStatus.CREATED).body(new RegisterResponse(
+                result.ok(),
+                result.verificationToken(),
+                result.privateKey(),
+                result.downloadFilename(),
+                result.downloadContent(),
+                result.issuedAt(),
+                result.username(),
+                result.role(),
+                result.legalName()
+        ));
     }
 
     @PostMapping("/verify-email")
@@ -67,7 +110,7 @@ public class AuthPublicController {
         final String username = normalizeUsername(body.username());
         final var meta = new AuthLoginService.ClientMeta(request.getHeader("User-Agent"), request.getRemoteAddr());
 
-        final var out = loginService.login(username, body.password(), meta);
+        final var out = loginService.login(username, body.password(), body.privateKey(), meta);
         if (out instanceof AuthLoginService.LoginResult.Tokens t) {
             return ResponseEntity.ok(toTokenResponse(t.tokens()));
         }
@@ -113,9 +156,27 @@ public class AuthPublicController {
             String password,
             @JsonAlias({"role", "requestedRole"}) String requestedRole
     ) {}
-    public record RegisterResponse(boolean ok, String verificationToken) {}
+
+    public record RegisterResponse(
+            boolean ok,
+            String verificationToken,
+            String privateKey,
+            String downloadFilename,
+            String downloadContent,
+            String issuedAt,
+            String username,
+            String role,
+            String legalName
+    ) {}
+
     public record VerifyEmailRequest(String token, @JsonAlias({"email"}) String username) {}
-    public record LoginRequest(@JsonAlias({"email"}) String username, String password) {}
+
+    public record LoginRequest(
+            @JsonAlias({"email"}) String username,
+            String password,
+            @JsonAlias({"otp", "privateKey", "private_key"}) String privateKey
+    ) {}
+
     public record RefreshRequest(String refreshToken) {}
     public record TokenResponse(String accessToken, String refreshToken, String tokenType, long expiresIn) {}
     public record MfaChallengeResponse(boolean mfaRequired, String challengeId, String method, long expiresIn, String devCode) {}

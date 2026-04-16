@@ -2,6 +2,9 @@ package id.ac.ui.cs.advprog.backend.auth.repository;
 
 import id.ac.ui.cs.advprog.backend.auth.model.Role;
 import java.sql.PreparedStatement;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -21,23 +24,18 @@ public class UserAuthRepository {
 
     public Optional<UserRow> findByUsername(final String username) {
         final var rows = jdbcTemplate.query(
-                """
-                SELECT id, username, password_hash, role, is_disabled, email_verified, mfa_enabled, mfa_method, totp_secret
-                FROM app_users
-                WHERE username = ?
-                """,
-                (rs, n) -> new UserRow(
-                        rs.getLong("id"),
-                        rs.getString("username"),
-                        rs.getString("password_hash"),
-                        Role.fromDb(rs.getString("role")),
-                        rs.getBoolean("is_disabled"),
-                        rs.getBoolean("email_verified"),
-                        rs.getBoolean("mfa_enabled"),
-                        rs.getString("mfa_method"),
-                        rs.getString("totp_secret")
-                ),
+                baseSelect() + " WHERE username = ?",
+                (rs, n) -> mapUserRow(rs),
                 username
+        );
+        return rows.stream().findFirst();
+    }
+
+    public Optional<UserRow> findById(final long id) {
+        final var rows = jdbcTemplate.query(
+                baseSelect() + " WHERE id = ?",
+                (rs, n) -> mapUserRow(rs),
+                id
         );
         return rows.stream().findFirst();
     }
@@ -52,6 +50,52 @@ public class UserAuthRepository {
             ps.setString(1, username);
             ps.setString(2, passwordHash);
             ps.setString(3, role.name());
+            return ps;
+        }, keyHolder);
+
+        final Long id = extractGeneratedId(keyHolder);
+        if (id == null) throw new IllegalStateException("failed_to_insert_user");
+        return id;
+    }
+
+    public long insertVerifiedIdentityUser(
+            final String username,
+            final String passwordHash,
+            final Role role,
+            final String legalName,
+            final String personalKeyHash,
+            final String identityDocType,
+            final String identityDocText,
+            final Instant personalKeyRotatedAt
+    ) {
+        final KeyHolder keyHolder = new GeneratedKeyHolder();
+        jdbcTemplate.update(con -> {
+            final PreparedStatement ps = con.prepareStatement(
+                    """
+                    INSERT INTO app_users(
+                        username,
+                        password_hash,
+                        role,
+                        email_verified,
+                        legal_name,
+                        display_name,
+                        personal_key_hash,
+                        identity_doc_type,
+                        identity_doc_text,
+                        personal_key_rotated_at
+                    ) VALUES (?, ?, ?, TRUE, ?, ?, ?, ?, ?, ?)
+                    """,
+                    new String[] {"id"}
+            );
+            ps.setString(1, username);
+            ps.setString(2, passwordHash);
+            ps.setString(3, role.name());
+            ps.setString(4, legalName);
+            ps.setString(5, legalName);
+            ps.setString(6, personalKeyHash);
+            ps.setString(7, identityDocType);
+            ps.setString(8, identityDocText);
+            ps.setObject(9, OffsetDateTime.ofInstant(personalKeyRotatedAt, ZoneOffset.UTC));
             return ps;
         }, keyHolder);
 
@@ -91,26 +135,63 @@ public class UserAuthRepository {
                 userId
         );
         if (rows.isEmpty()) return Optional.empty();
-        final String s = rows.get(0);
-        return (s == null || s.isBlank()) ? Optional.empty() : Optional.of(s);
+        final String value = rows.get(0);
+        return (value == null || value.isBlank()) ? Optional.empty() : Optional.of(value);
+    }
+
+    public void updatePasswordHash(final long userId, final String passwordHash) {
+        jdbcTemplate.update("UPDATE app_users SET password_hash = ? WHERE id = ?", passwordHash, userId);
+    }
+
+    public void updatePersonalKey(final long userId, final String personalKeyHash, final Instant rotatedAt) {
+        jdbcTemplate.update(
+                "UPDATE app_users SET personal_key_hash = ?, personal_key_rotated_at = ? WHERE id = ?",
+                personalKeyHash,
+                OffsetDateTime.ofInstant(rotatedAt, ZoneOffset.UTC),
+                userId
+        );
+    }
+
+    private static String baseSelect() {
+        return """
+                SELECT id, username, password_hash, role, is_disabled, email_verified, mfa_enabled, mfa_method,
+                       totp_secret, legal_name, personal_key_hash, identity_doc_type, identity_doc_text,
+                       personal_key_rotated_at
+                FROM app_users
+                """;
+    }
+
+    private static UserRow mapUserRow(final java.sql.ResultSet rs) throws java.sql.SQLException {
+        return new UserRow(
+                rs.getLong("id"),
+                rs.getString("username"),
+                rs.getString("password_hash"),
+                Role.fromDb(rs.getString("role")),
+                rs.getBoolean("is_disabled"),
+                rs.getBoolean("email_verified"),
+                rs.getBoolean("mfa_enabled"),
+                rs.getString("mfa_method"),
+                rs.getString("totp_secret"),
+                rs.getString("legal_name"),
+                rs.getString("personal_key_hash"),
+                rs.getString("identity_doc_type"),
+                rs.getString("identity_doc_text"),
+                rs.getObject("personal_key_rotated_at", OffsetDateTime.class)
+        );
     }
 
     private static Long extractGeneratedId(final KeyHolder keyHolder) {
         final List<Map<String, Object>> keyList = keyHolder.getKeyList();
         if (keyList.isEmpty()) return null;
-        final Map<String, Object> row = keyList.get(0);
+        final Map<String, Object> row = keyHolder.getKeyList().get(0);
 
         Object idObj = row.containsKey("id") ? row.get("id") : row.get("ID");
         if (idObj instanceof Number n) return n.longValue();
 
-        for (Object v : row.values()) {
-            if (v instanceof Number n2) return n2.longValue();
+        for (Object value : row.values()) {
+            if (value instanceof Number n2) return n2.longValue();
         }
         return null;
-    }
-
-    public void updatePasswordHash(final long userId, final String passwordHash) {
-        jdbcTemplate.update("UPDATE app_users SET password_hash = ? WHERE id = ?", passwordHash, userId);
     }
 
     public record UserRow(
@@ -122,6 +203,11 @@ public class UserAuthRepository {
             boolean emailVerified,
             boolean mfaEnabled,
             String mfaMethod,
-            String totpSecret
+            String totpSecret,
+            String legalName,
+            String personalKeyHash,
+            String identityDocType,
+            String identityDocText,
+            OffsetDateTime personalKeyRotatedAt
     ) {}
 }

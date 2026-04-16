@@ -492,6 +492,21 @@
     color: #0056b3;
 }
 
+/* For notification toast */
+.ap-toastSuccess {
+    background: #ecfdf3;
+    border: 1px solid #abefc6;
+    color: #067647;
+}
+
+.ap-registerDocCard textarea {
+    width: 100%;
+    min-height: 96px;
+    box-sizing: border-box;
+    resize: vertical;
+    margin-top: 10px;
+}
+
 @media (max-width: 640px) {
     .ap-authFormCard {
         padding: 16px;
@@ -595,3 +610,10 @@
     }
 }
 
+.ap-helpOk {
+    color: #067647;
+}
+
+.ap-helpWarn {
+    color: #b54708;
+}
