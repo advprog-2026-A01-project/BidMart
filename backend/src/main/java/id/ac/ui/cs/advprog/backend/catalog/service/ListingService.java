@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.backend.catalog.service;
 
 import id.ac.ui.cs.advprog.backend.catalog.model.Listing;
+import id.ac.ui.cs.advprog.backend.catalog.model.ListingStatus;
 import id.ac.ui.cs.advprog.backend.catalog.repository.ListingRepository;
 import id.ac.ui.cs.advprog.backend.catalog.repository.ListingSpecification;
 import lombok.RequiredArgsConstructor;
