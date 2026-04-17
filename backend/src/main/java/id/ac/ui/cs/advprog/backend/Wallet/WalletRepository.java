@@ -11,6 +11,7 @@ import java.time.ZonedDateTime;
 
 @Repository
 public class WalletRepository {
+    private static final String POS_AMT_MSG = "Amount must be positive";
     private final JdbcTemplate jdbcTemplate;
 
     public WalletRepository(JdbcTemplate jdbcTemplate) {
@@ -39,7 +40,7 @@ public class WalletRepository {
     }
 
     public boolean addBalance(long userId, double amount) {
-        if (amount <= 0) throw new IllegalArgumentException("Amount must be positive");
+        if (amount <= 0) throw new IllegalArgumentException(POS_AMT_MSG);
         int rows = jdbcTemplate.update(
             "UPDATE app_wallets SET balance = balance + ? WHERE user_id = ?",
             amount, userId
@@ -48,7 +49,7 @@ public class WalletRepository {
     }
 
     public boolean withdraw(long userId, double amount) {
-        if (amount <= 0) throw new IllegalArgumentException("Amount must be positive");
+        if (amount <= 0) throw new IllegalArgumentException(POS_AMT_MSG);
         int rows = jdbcTemplate.update(
             "UPDATE app_wallets SET balance = balance - ? WHERE user_id = ? AND balance >= ?",
             amount, userId, amount
@@ -57,7 +58,7 @@ public class WalletRepository {
     }
 
     public boolean holdFunds(long userId, double amount) {
-        if (amount <= 0) throw new IllegalArgumentException("Amount must be positive");
+        if (amount <= 0) throw new IllegalArgumentException(POS_AMT_MSG);
         int rows = jdbcTemplate.update(
             "UPDATE app_wallets SET balance = balance - ?, held_balance = held_balance + ? " +
             "WHERE user_id = ? AND balance >= ?",
@@ -67,7 +68,7 @@ public class WalletRepository {
     }
 
     public boolean releaseFunds(long userId, double amount) {
-        if (amount <= 0) throw new IllegalArgumentException("Amount must be positive");
+        if (amount <= 0) throw new IllegalArgumentException(POS_AMT_MSG);
         int rows = jdbcTemplate.update(
             "UPDATE app_wallets SET held_balance = held_balance - ?, balance = balance + ? " +
             "WHERE user_id = ? AND held_balance >= ?",
@@ -77,7 +78,7 @@ public class WalletRepository {
     }
 
     public boolean convertToPayment(long userId, double amount) {
-        if (amount <= 0) throw new IllegalArgumentException("Amount must be positive");
+        if (amount <= 0) throw new IllegalArgumentException(POS_AMT_MSG);
         int rows = jdbcTemplate.update(
             "UPDATE app_wallets SET held_balance = held_balance - ? " +
             "WHERE user_id = ? AND held_balance >= ?",
@@ -86,6 +87,7 @@ public class WalletRepository {
         return rows > 0;
     }
 
+    @SuppressWarnings("PMD.LawOfDemeter")
     public void insertTransaction(WalletTransaction tx) {
         jdbcTemplate.update(
             "INSERT INTO app_wallet_transactions (id, user_id, type, amount, created_at) VALUES (?, ?, ?, ?, ?)",

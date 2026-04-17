@@ -14,6 +14,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@SuppressWarnings({"PMD.JUnitTestShouldIncludeAssert", "PMD.JUnitAssertionsShouldIncludeMessage", "PMD.JUnitTestContainsTooManyAsserts", "PMD.LiteralsFirstInComparisons"})
 class WalletServiceTest {
 
     private WalletRepository repository;

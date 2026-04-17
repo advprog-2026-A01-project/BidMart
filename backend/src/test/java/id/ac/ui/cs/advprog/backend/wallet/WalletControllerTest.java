@@ -26,6 +26,7 @@ import org.springframework.test.context.DynamicPropertySource;
 
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
+@SuppressWarnings({"PMD.JUnitTestShouldIncludeAssert", "PMD.JUnitAssertionsShouldIncludeMessage", "PMD.JUnitTestContainsTooManyAsserts", "PMD.LiteralsFirstInComparisons"})
 class WalletControllerTest {
 
     @DynamicPropertySource

@@ -27,11 +27,7 @@ public class WalletController {
         throw new IllegalStateException("User not authenticated");
     }
 
-    private void verifyOwnership(long pathUserId) {
-        if (pathUserId != getCurrentUserId()) {
-            throw new SecurityException("Not authorized to access this wallet");
-        }
-    }
+
 
     @GetMapping("/me/info")
     public ResponseEntity<Map<String, Double>> getMyWalletInfo() {

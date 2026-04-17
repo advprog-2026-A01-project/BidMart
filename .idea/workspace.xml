@@ -4,17 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="64f27831-1f70-495d-9451-dab36c6d0d2b" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/Wallet/WalletController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/Wallet/WalletController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/Wallet/WalletEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/Wallet/WalletEntity.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/Wallet/WalletRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/Wallet/WalletRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/Wallet/WalletRepositoryImpl.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/Wallet/WalletService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/Wallet/WalletService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/Wallet/WalletTransaction.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/Wallet/WalletTransaction.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/resources/schema.sql" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/resources/schema.sql" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docker-compose.yml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/App.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.tsx" afterDir="false" />
-    </list>
+    <list default="true" id="64f27831-1f70-495d-9451-dab36c6d0d2b" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -85,7 +75,7 @@
       <workItem from="1776355049316" duration="2000" />
       <workItem from="1776355123230" duration="18000" />
       <workItem from="1776355148581" duration="4775000" />
-      <workItem from="1776413213384" duration="1229000" />
+      <workItem from="1776413213384" duration="2008000" />
     </task>
     <servers />
   </component>
