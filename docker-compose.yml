@@ -7,6 +7,8 @@ services:
       POSTGRES_PASSWORD: bidmart
     volumes:
       - bidmart_db:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U bidmart -d bidmart"]
       interval: 5s

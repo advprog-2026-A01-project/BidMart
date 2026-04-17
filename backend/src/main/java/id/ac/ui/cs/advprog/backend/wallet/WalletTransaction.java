@@ -2,22 +2,23 @@ package id.ac.ui.cs.advprog.backend.wallet;
 
 import lombok.Getter;
 import lombok.Setter;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
+import java.util.UUID;
 
 @Getter
 @Setter
 public class WalletTransaction {
-    private String transactionId;
-    private String userId;
-    private String type; 
+    private UUID id;
+    private long userId;
+    private String type;
     private double amount;
-    private LocalDateTime timestamp;
+    private ZonedDateTime createdAt;
 
-    public WalletTransaction(String userId, String type, double amount) {
-        this.transactionId = java.util.UUID.randomUUID().toString();
+    public WalletTransaction(UUID id, long userId, String type, double amount, ZonedDateTime createdAt) {
+        this.id = id;
         this.userId = userId;
         this.type = type;
         this.amount = amount;
-        this.timestamp = LocalDateTime.now();
+        this.createdAt = createdAt;
     }
 }

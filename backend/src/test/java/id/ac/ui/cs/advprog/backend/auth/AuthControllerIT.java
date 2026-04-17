@@ -9,7 +9,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +29,7 @@ class AuthControllerIT {
     private static final String ROLE_BUYER = "BUYER";
     private static final String MFA_METHOD_EMAIL = "EMAIL";
 
+    private static final String API_CAPTCHA = "/api/auth/captcha";
     private static final String API_REGISTER = "/api/auth/register";
     private static final String API_VERIFY_EMAIL = "/api/auth/verify-email";
     private static final String API_LOGIN = "/api/auth/login";
@@ -43,7 +43,6 @@ class AuthControllerIT {
     private static final String JSON_ERROR = "$.error";
     private static final String JSON_ACCESS_TOKEN = "$.accessToken";
     private static final String JSON_REFRESH_TOKEN = "$.refreshToken";
-    private static final String JSON_VERIFICATION_TOKEN = "$.verificationToken";
     private static final String JSON_USERNAME = "$.username";
     private static final String JSON_ROLE = "$.role";
     private static final String JSON_MFA_REQUIRED = "$.mfaRequired";
@@ -51,11 +50,15 @@ class AuthControllerIT {
 
     private static final String FIELD_TOKEN = "token";
     private static final String FIELD_USERNAME = "username";
-    private static final String FIELD_VERIFICATION_TOKEN = "verificationToken";
+    private static final String FIELD_PASSWORD = "password";
     private static final String FIELD_ACCESS_TOKEN = "accessToken";
     private static final String FIELD_REFRESH_TOKEN = "refreshToken";
     private static final String FIELD_CHALLENGE_ID = "challengeId";
     private static final String FIELD_CODE = "code";
+    private static final String FIELD_CAPTCHA_ID = "captchaId";
+    private static final String FIELD_CAPTCHA_ANSWER = "captchaAnswer";
+    private static final String FIELD_DEV_ANSWER = "devAnswer";
+    private static final String FIELD_ENABLED = "enabled";
 
     private static final String DEMO_VERIFY_CODE = "112233";
     private static final String DEMO_OTP_CODE = "445566";
@@ -207,18 +210,25 @@ class AuthControllerIT {
     }
 
     private ResultActions verifyEmailWithUsername(final String username, final String code) throws Exception {
-        final Map<String, String> body = new HashMap<>();
-        body.put(FIELD_USERNAME, username);
-        body.put(FIELD_TOKEN, code);
         return mvc.perform(post(API_VERIFY_EMAIL)
                 .contentType(APPLICATION_JSON)
-                .content(om.writeValueAsString(body)));
+                .content(om.writeValueAsString(Map.of(
+                        FIELD_USERNAME, username,
+                        FIELD_TOKEN, code
+                ))));
     }
 
     private ResultActions login(final String username, final String password) throws Exception {
+        final TestCaptcha captcha = issueCaptcha();
+
         return mvc.perform(post(API_LOGIN)
                 .contentType(APPLICATION_JSON)
-                .content(om.writeValueAsString(new Cred(username, password))));
+                .content(om.writeValueAsString(Map.of(
+                        FIELD_USERNAME, username,
+                        FIELD_PASSWORD, password,
+                        FIELD_CAPTCHA_ID, captcha.captchaId(),
+                        FIELD_CAPTCHA_ANSWER, captcha.answer()
+                ))));
     }
 
     private ResultActions refresh(final String refreshToken) throws Exception {
@@ -244,6 +254,26 @@ class AuthControllerIT {
                 ))));
     }
 
+    private TestCaptcha issueCaptcha() throws Exception {
+        final String body = mvc.perform(get(API_CAPTCHA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$." + FIELD_ENABLED).value(true))
+                .andExpect(jsonPath("$." + FIELD_CAPTCHA_ID).isString())
+                .andExpect(jsonPath("$." + FIELD_DEV_ANSWER).isString())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        final JsonNode json = om.readTree(body);
+        final String captchaId = json.get(FIELD_CAPTCHA_ID).asText();
+        final String answer = json.get(FIELD_DEV_ANSWER).asText();
+
+        assertThat(captchaId).isNotBlank();
+        assertThat(answer).isNotBlank();
+
+        return new TestCaptcha(captchaId, answer);
+    }
+
     private String jsonText(final String body, final String fieldName) throws Exception {
         final JsonNode json = om.readTree(body);
         final JsonNode value = json.get(fieldName);
@@ -257,8 +287,6 @@ class AuthControllerIT {
     private String authBearer(final String accessToken) {
         return AUTH_BEARER_PREFIX + accessToken;
     }
-
-    record Cred(String username, String password) {}
 
     private String verifyDemoOtpAndGetAccessToken(final String username, final String password) throws Exception {
         final String mfaBody = login(username, password)
@@ -306,5 +334,7 @@ class AuthControllerIT {
         return jsonText(tokenBody, FIELD_REFRESH_TOKEN);
     }
 
+    record Cred(String username, String password) {}
 
+    record TestCaptcha(String captchaId, String answer) {}
 }

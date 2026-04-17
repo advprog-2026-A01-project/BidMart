@@ -2,22 +2,27 @@ import { useEffect, useState } from 'react'
 import './App.css'
 import { useAuth } from './auth/useAuth'
 import { AccountPanel } from './auth/AccountPanel'
+import { WalletPanel } from './components/wallet/WalletPanel'
 import { AuthProvider } from './auth/AuthContext'
 
 function HomePage() {
     const { user } = useAuth()
     const [showAccount, setShowAccount] = useState(false)
+    const [showWallet, setShowWallet] = useState(false)
     const [q, setQ] = useState('')
 
     // Better UX: close modal on ESC
     useEffect(() => {
-        if (!showAccount) return
+        if (!showAccount && !showWallet) return
         const onKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') setShowAccount(false)
+            if (e.key === 'Escape') {
+                setShowAccount(false)
+                setShowWallet(false)
+            }
         }
         window.addEventListener('keydown', onKeyDown)
         return () => window.removeEventListener('keydown', onKeyDown)
-    }, [showAccount])
+    }, [showAccount, showWallet])
 
     const who = user ? user.username : 'Guest'
     const whoInitial = (who.trim()[0] ?? 'G').toUpperCase()
@@ -55,6 +60,11 @@ function HomePage() {
                         <button className="bm-btnGhost" onClick={() => setShowAccount(true)} aria-haspopup="dialog">
                             Account
                         </button>
+                        {user && (
+                            <button className="bm-btnPrimary" onClick={() => setShowWallet(true)} aria-haspopup="dialog" style={{marginLeft: '8px'}}>
+                                Wallet
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -104,7 +114,6 @@ function HomePage() {
                     role="dialog"
                     aria-modal="true"
                     aria-label="Account"
-                    // Better UX: close when clicking outside the modal
                     onMouseDown={(e) => {
                         if (e.target === e.currentTarget) setShowAccount(false)
                     }}
@@ -120,6 +129,20 @@ function HomePage() {
                             <AccountPanel />
                         </div>
                     </div>
+                </div>
+            )}
+
+            {showWallet && (
+                <div
+                    className="bm-overlay"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Wallet"
+                    onMouseDown={(e) => {
+                        if (e.target === e.currentTarget) setShowWallet(false)
+                    }}
+                >
+                    <WalletPanel onClose={() => setShowWallet(false)} />
                 </div>
             )}
         </>
