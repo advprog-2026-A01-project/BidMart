@@ -26,7 +26,7 @@ import org.springframework.test.context.DynamicPropertySource;
 
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
-@SuppressWarnings({"PMD.JUnitTestShouldIncludeAssert", "PMD.JUnitAssertionsShouldIncludeMessage", "PMD.JUnitTestContainsTooManyAsserts", "PMD.LiteralsFirstInComparisons"})
+@SuppressWarnings({"PMD.UnitTestShouldIncludeAssert", "PMD.UnitTestAssertionsShouldIncludeMessage", "PMD.UnitTestContainsTooManyAsserts", "PMD.LiteralsFirstInComparisons"})
 class WalletControllerTest {
 
     @DynamicPropertySource
@@ -66,7 +66,6 @@ class WalletControllerTest {
 
     @Test
     void testGetWalletInfoUnauthorized() throws Exception {
-        // Clearing auth causes Controller to throw IllegalStateException("User not authenticated")
         SecurityContextHolder.clearContext();
         try {
             mockMvc.perform(get("/api/wallet/me/info"));

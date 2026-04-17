@@ -3,7 +3,7 @@ package id.ac.ui.cs.advprog.backend.wallet;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@SuppressWarnings({"PMD.JUnitTestShouldIncludeAssert", "PMD.JUnitAssertionsShouldIncludeMessage", "PMD.JUnitTestContainsTooManyAsserts", "PMD.LiteralsFirstInComparisons"})
+@SuppressWarnings({"PMD.UnitTestShouldIncludeAssert", "PMD.UnitTestAssertionsShouldIncludeMessage", "PMD.UnitTestContainsTooManyAsserts", "PMD.LiteralsFirstInComparisons"})
 class WalletEntityTest {
 
     @Test

@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 
 @JdbcTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@SuppressWarnings({"PMD.JUnitTestShouldIncludeAssert", "PMD.JUnitAssertionsShouldIncludeMessage", "PMD.JUnitTestContainsTooManyAsserts", "PMD.LiteralsFirstInComparisons", "PMD.AvoidDuplicateLiterals"})
+@SuppressWarnings({"PMD.UnitTestShouldIncludeAssert", "PMD.UnitTestAssertionsShouldIncludeMessage", "PMD.UnitTestContainsTooManyAsserts", "PMD.LiteralsFirstInComparisons", "PMD.AvoidDuplicateLiterals"})
 class WalletRepositoryTest {
 
     @org.springframework.beans.factory.annotation.Autowired
