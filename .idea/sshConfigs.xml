@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="SshConfigs">
-    <configs>
-      <sshConfig host="3.238.220.54" id="80f13ceb-0bf4-438a-bfc8-bf798e4b4404" keyPath="C:\Users\Go Nadine Audelia\Downloads\bidmart-key.pem" port="22" nameFormat="DESCRIPTIVE" username="ec2-user" useOpenSSHConfig="false" />
-    </configs>
-  </component>
-</project>
