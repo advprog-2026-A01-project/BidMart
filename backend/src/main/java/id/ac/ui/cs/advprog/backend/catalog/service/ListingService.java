@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.backend.catalog.service;
 
 import id.ac.ui.cs.advprog.backend.catalog.model.Listing;
+import id.ac.ui.cs.advprog.backend.catalog.model.ListingStatus;
 import id.ac.ui.cs.advprog.backend.catalog.repository.ListingRepository;
 import id.ac.ui.cs.advprog.backend.catalog.repository.ListingSpecification;
 import lombok.RequiredArgsConstructor;
@@ -18,8 +19,7 @@ public class ListingService {
         // status yang boleh publik: ACTIVE & EXTENDED
         List<ListingStatus> activeStatuses = List.of(ListingStatus.ACTIVE, ListingStatus.EXTENDED);
 
-        Specification<Listing> spec = Specification
-                .where(ListingSpecification.hasStatusIn(activeStatuses))
+        Specification<Listing> spec = ListingSpecification.hasStatusIn(activeStatuses)
                 .and(ListingSpecification.isNotExpired())
                 .and(ListingSpecification.hasKeyword(keyword))
                 .and(ListingSpecification.hasCategory(categoryId))

@@ -5,13 +5,15 @@ import id.ac.ui.cs.advprog.backend.catalog.model.ListingStatus;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Locale;
 
 public class ListingSpecification {
     // filter berdasarkan kata kunci di judul atau deskripsi
     public static Specification<Listing> hasKeyword(String keyword) {
         return (root, query, cb) -> {
             if (keyword == null || keyword.isEmpty()) return null;
-            String lowerKeyword = "%" + keyword.toLowerCase() + "%";
+            String lowerKeyword = "%" + keyword.toLowerCase(Locale.ROOT) + "%";
             return cb.or(
                     cb.like(cb.lower(root.get("title")), lowerKeyword),
                     cb.like(cb.lower(root.get("description")), lowerKeyword)
