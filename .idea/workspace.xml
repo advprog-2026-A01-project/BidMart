@@ -4,7 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e0fe0f95-c812-48be-a048-cd70040e9a48" name="Changes" comment="" />
+    <list default="true" id="e0fe0f95-c812-48be-a048-cd70040e9a48" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/catalog/repository/ListingSpecification.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/catalog/repository/ListingSpecification.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/catalog/service/ListingService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/catalog/service/ListingService.java" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -59,7 +63,8 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "RunOnceActivity.MCP Project settings loaded": "true",
-    "git-widget-placeholder": "staging"
+    "git-widget-placeholder": "feat/catalog",
+    "node.js.selected.package.tslint": "(autodetect)"
   }
 }]]></component>
   <component name="RunManager">
