@@ -173,3 +173,22 @@ CREATE TABLE IF NOT EXISTS app_outbox_events (
 
 CREATE INDEX IF NOT EXISTS idx_outbox_created_at ON app_outbox_events(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_outbox_unpublished ON app_outbox_events(published_at);
+
+-- ===== Wallet Management =====
+
+CREATE TABLE IF NOT EXISTS app_wallets (
+    user_id BIGINT PRIMARY KEY REFERENCES app_users(id) ON DELETE CASCADE,
+    balance NUMERIC(19, 4) NOT NULL DEFAULT 0.0 CHECK (balance >= 0.0),
+    held_balance NUMERIC(19, 4) NOT NULL DEFAULT 0.0 CHECK (held_balance >= 0.0)
+);
+
+CREATE TABLE IF NOT EXISTS app_wallet_transactions (
+    id UUID PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES app_wallets(user_id) ON DELETE CASCADE,
+    type VARCHAR(32) NOT NULL, -- TOPUP, WITHDRAW, HOLD, RELEASE, PAYMENT
+    amount NUMERIC(19, 4) NOT NULL CHECK (amount > 0.0),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_wallet_transactions_user_id ON app_wallet_transactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_wallet_transactions_created_at ON app_wallet_transactions(created_at DESC);

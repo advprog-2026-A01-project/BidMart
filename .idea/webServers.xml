@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="7ae00c40-4995-4fda-84b8-5e727acdbdde" name="bidmart" url="http://3.238.220.54:8080">
+        <fileTransfer rootFolder="/home/ec2-user" accessType="SFTP" host="3.238.220.54" port="22" sshConfigId="80f13ceb-0bf4-438a-bfc8-bf798e4b4404" sshConfig="ec2-user@3.238.220.54:22 key" keyPair="true">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" keepAliveTimeout="0" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
