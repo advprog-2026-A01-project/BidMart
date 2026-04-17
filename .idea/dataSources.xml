@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
-    <data-source source="LOCAL" name="bidmart@localhost" uuid="a32af63a-3986-4eab-924c-b2da16c97452">
+    <data-source source="LOCAL" name="bidmart@localhost" uuid="4bc26b27-652e-45d1-b744-1761c972206e">
       <driver-ref>postgresql</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.postgresql.Driver</jdbc-driver>
