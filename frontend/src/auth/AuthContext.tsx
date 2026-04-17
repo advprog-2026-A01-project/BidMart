@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import * as AuthApi from '../api/auth'
 import { clearTokens, isAccessExpired, loadTokens, saveTokens, type StoredTokens } from './tokenStorage'
 import { getStatus, normalizeError } from './error'
-import { AuthContext, type AuthContextValue, type PendingMfa } from './AuthContextStore'
+import { AuthContext, type AuthContextValue, type PendingMfa, type RegisterInput } from './AuthContextStore'
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [tokens, setTokens] = useState<StoredTokens | null>(() => loadTokens())
@@ -28,12 +28,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     }, [])
 
-    const register = useCallback(async (username: string, password: string, requestedRole?: 'BUYER' | 'SELLER') => {
+    const register = useCallback(async (input: RegisterInput) => {
         setLoading(true)
         setError(null)
         try {
-            const res = await AuthApi.register(username, password, requestedRole)
+            const res = await AuthApi.register(input.username, input.password, input.requestedRole, input.extras)
             setLastVerificationToken(res.verificationToken ?? null)
+            return res
         } catch (e: unknown) {
             setError(normalizeError(e))
             throw e
@@ -42,11 +43,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     }, [])
 
-    const verifyEmail = useCallback(async (token: string) => {
+    const verifyEmail = useCallback(async (token: string, username?: string) => {
         setLoading(true)
         setError(null)
         try {
-            await AuthApi.verifyEmail(token)
+            await AuthApi.verifyEmail(token, username)
             setLastVerificationToken(null)
         } catch (e: unknown) {
             setError(normalizeError(e))
@@ -56,12 +57,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     }, [])
 
-    const login = useCallback(async (username: string, password: string) => {
+    const login = useCallback(async (username: string, password: string, privateKey?: string, captcha?: AuthApi.CaptchaPayload) => {
         setLoading(true)
         setError(null)
         setPendingMfa(null)
         try {
-            const res = await AuthApi.login(username, password)
+            const res = await AuthApi.login(username, password, privateKey, captcha)
 
             if (!('accessToken' in res)) {
                 setPendingMfa({
@@ -70,15 +71,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     expiresIn: res.expiresIn,
                     devCode: res.devCode ?? null,
                 })
-                return
+                return res
             }
 
             const stored = saveTokens(res)
             setTokens(stored)
             const me = await AuthApi.me(stored.accessToken)
             setUser(me)
+            return res
         } catch (e: unknown) {
-            setError(normalizeError(e))
+            const code = normalizeError(e)
+
+            if (code !== 'private_key_required') {
+                setError(code)
+            } else {
+                setError(null)
+            }
+
             clearTokens()
             setTokens(null)
             setUser(null)
@@ -139,6 +148,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     }, [tokens?.accessToken])
 
+    const rotatePrivateKey = useCallback(async () => {
+        const accessToken = tokens?.accessToken
+        if (!accessToken) {
+            throw new Error('NOT_AUTHENTICATED')
+        }
+        setLoading(true)
+        setError(null)
+        try {
+            return await AuthApi.rotatePrivateKey(accessToken)
+        } catch (e: unknown) {
+            setError(normalizeError(e))
+            throw e
+        } finally {
+            setLoading(false)
+        }
+    }, [tokens?.accessToken])
+
     const becomeSeller = useCallback(async () => {
         const accessToken = tokens?.accessToken
         if (!accessToken) return
@@ -165,8 +191,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!accessToken) return
         try {
             await AuthApi.logout(accessToken)
-        } catch {
-            // ignore
+        } catch(e) {
+            console.warn('Logout request failed after local cleanup', e)
         }
     }, [tokens?.accessToken])
 
@@ -205,19 +231,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return
         }
         void reloadMe()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
+    }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
     const value: AuthContextValue = useMemo(
         () => ({
             tokens, user, loading, error, lastVerificationToken, pendingMfa,
             register, verifyEmail, login, submitMfa, cancelMfa,
-            enable2faEmail, disable2fa, becomeSeller,
+            enable2faEmail, disable2fa, rotatePrivateKey, becomeSeller,
             logout, refresh, reloadMe,
         }),
         [tokens, user, loading, error, lastVerificationToken, pendingMfa,
             register, verifyEmail, login, submitMfa, cancelMfa,
-            enable2faEmail, disable2fa, becomeSeller,
+            enable2faEmail, disable2fa, rotatePrivateKey, becomeSeller,
             logout, refresh, reloadMe]
     )
 

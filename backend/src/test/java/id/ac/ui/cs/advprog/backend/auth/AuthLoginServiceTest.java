@@ -1,8 +1,19 @@
 package id.ac.ui.cs.advprog.backend.auth;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.Optional;
+import java.util.UUID;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import org.mockito.Mockito;
 import static org.mockito.Mockito.when;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import id.ac.ui.cs.advprog.backend.auth.model.AuthException;
 import id.ac.ui.cs.advprog.backend.auth.model.AuthProperties;
@@ -10,30 +21,24 @@ import id.ac.ui.cs.advprog.backend.auth.model.Role;
 import id.ac.ui.cs.advprog.backend.auth.repository.MfaChallengeRepository;
 import id.ac.ui.cs.advprog.backend.auth.repository.SessionRepository;
 import id.ac.ui.cs.advprog.backend.auth.repository.UserAuthRepository;
+import id.ac.ui.cs.advprog.backend.auth.repository.UserSecurityRepository;
 import id.ac.ui.cs.advprog.backend.auth.service.AuthLoginService;
 import id.ac.ui.cs.advprog.backend.auth.service.AuthMfaManagementService;
 import id.ac.ui.cs.advprog.backend.auth.service.AuthTokenService;
+import id.ac.ui.cs.advprog.backend.auth.service.EmailService;
 import id.ac.ui.cs.advprog.backend.auth.service.MfaChallengeService;
 import id.ac.ui.cs.advprog.backend.auth.service.MfaVerificationService;
 import id.ac.ui.cs.advprog.backend.auth.service.SessionLimitService;
 import id.ac.ui.cs.advprog.backend.auth.service.UserAuthenticator;
-import java.time.Clock;
-import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.util.Optional;
-import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 class AuthLoginServiceTest {
 
     private UserAuthRepository userAuthRepository;
+    private UserSecurityRepository userSecurityRepository;
     private SessionRepository sessionRepository;
     private PasswordEncoder passwordEncoder;
     private MfaChallengeRepository mfaChallengeRepository;
+    private EmailService emailService;
 
     private Clock clock;
     private AuthLoginService loginService;
@@ -41,9 +46,11 @@ class AuthLoginServiceTest {
     @BeforeEach
     void setUp() {
         userAuthRepository = Mockito.mock(UserAuthRepository.class);
+        userSecurityRepository = Mockito.mock(UserSecurityRepository.class);
         sessionRepository = Mockito.mock(SessionRepository.class);
         passwordEncoder = Mockito.mock(PasswordEncoder.class);
         mfaChallengeRepository = Mockito.mock(MfaChallengeRepository.class);
+        emailService = Mockito.mock(EmailService.class);
 
         final AuthProperties props = new AuthProperties();
         props.setMaxSessionsPerUser(10);
@@ -56,13 +63,27 @@ class AuthLoginServiceTest {
         clock = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC);
 
         final UserAuthenticator authenticator = new UserAuthenticator(userAuthRepository, passwordEncoder);
-        final SessionLimitService limit = new SessionLimitService(sessionRepository, 10, AuthProperties.SessionOverflowPolicy.REVOKE_OLDEST);
+        final SessionLimitService limit = new SessionLimitService(
+                sessionRepository,
+                10,
+                AuthProperties.SessionOverflowPolicy.REVOKE_OLDEST
+        );
         final AuthTokenService token = new AuthTokenService(sessionRepository, props, clock);
-        final AuthMfaManagementService mfaManage = new AuthMfaManagementService(userAuthRepository, clock);
-        final MfaChallengeService challengeService = new MfaChallengeService(mfaChallengeRepository, passwordEncoder, props);
-        final MfaVerificationService verifyService = new MfaVerificationService(mfaChallengeRepository, userAuthRepository, passwordEncoder, props);
+        final AuthMfaManagementService mfaManage = new AuthMfaManagementService(userSecurityRepository, clock);
+        final MfaChallengeService challengeService =
+                new MfaChallengeService(mfaChallengeRepository, passwordEncoder, props, emailService);
+        final MfaVerificationService verifyService =
+                new MfaVerificationService(mfaChallengeRepository, userSecurityRepository, passwordEncoder, props);
 
-        loginService = new AuthLoginService(clock, authenticator, limit, token, challengeService, verifyService, mfaManage);
+        loginService = new AuthLoginService(
+                clock,
+                authenticator,
+                limit,
+                token,
+                challengeService,
+                verifyService,
+                mfaManage
+        );
     }
 
     @Test
@@ -70,7 +91,8 @@ class AuthLoginServiceTest {
         // ===== Scenario A: login returns MFA required (EMAIL) =====
         final var user = new UserAuthRepository.UserRow(
                 1L, "u", "hash", Role.BUYER,
-                false, true, true, "EMAIL", null
+                false, true, true, "EMAIL", null,
+                null, null, null, null, null
         );
 
         when(userAuthRepository.findByUsername("u")).thenReturn(Optional.of(user));
@@ -79,13 +101,19 @@ class AuthLoginServiceTest {
         when(passwordEncoder.encode(any(String.class))).thenReturn("otpHash");
 
         final UUID challengeId = UUID.randomUUID();
-        when(mfaChallengeRepository.createEmailChallenge(eq(1L), eq("otpHash"), any(Instant.class))).thenReturn(challengeId);
+        when(mfaChallengeRepository.createEmailChallenge(eq(1L), eq("otpHash"), any(Instant.class)))
+                .thenReturn(challengeId);
 
-        final var out = loginService.login("u", "p", new AuthLoginService.ClientMeta("ua", "client"));
+        final var out = loginService.login(
+                "u",
+                "p",
+                null,
+                new AuthLoginService.ClientMeta("ua", "client")
+        );
 
         final boolean loginOk = (out instanceof AuthLoginService.LoginResult.MfaRequired m)
                 && challengeId.equals(m.challengeId())
-                && "EMAIL".equals(m.method()); // literals-first
+                && "EMAIL".equals(m.method());
 
         // ===== Scenario B: verify MFA wrong code throws invalid_mfa_code =====
         final OffsetDateTime expiresAt = OffsetDateTime.ofInstant(clock.instant().plusSeconds(60), ZoneOffset.UTC);
@@ -98,10 +126,9 @@ class AuthLoginServiceTest {
         try {
             loginService.verifyMfa(challengeId.toString(), "000000", new AuthLoginService.ClientMeta("ua", "client"));
         } catch (AuthException ex) {
-            verifyOk = "invalid_mfa_code".equals(ex.getCode()); // literals-first
+            verifyOk = "invalid_mfa_code".equals(ex.getCode());
         }
 
-        // NO Assertions.* calls (PMD-safe). JUnit will fail on AssertionError.
         if (!(loginOk && verifyOk)) {
             throw new AssertionError("login must require MFA and verify must reject wrong code");
         }

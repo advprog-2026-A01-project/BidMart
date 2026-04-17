@@ -18,6 +18,13 @@ CREATE TABLE IF NOT EXISTS app_users (
     mfa_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     mfa_method VARCHAR(16),
     totp_secret TEXT,
+    personal_key_hash VARCHAR(255),
+    personal_key_rotated_at TIMESTAMP WITH TIME ZONE,
+
+    -- identity verification
+    legal_name VARCHAR(160),
+    identity_doc_type VARCHAR(16),
+    identity_doc_text TEXT,
 
     -- profile
     display_name VARCHAR(128),
@@ -32,6 +39,11 @@ ALTER TABLE app_users ADD COLUMN IF NOT EXISTS totp_secret TEXT;
 ALTER TABLE app_users ADD COLUMN IF NOT EXISTS display_name VARCHAR(128);
 ALTER TABLE app_users ADD COLUMN IF NOT EXISTS photo_url TEXT;
 ALTER TABLE app_users ADD COLUMN IF NOT EXISTS shipping_address TEXT;
+ALTER TABLE app_users ADD COLUMN IF NOT EXISTS personal_key_hash VARCHAR(255);
+ALTER TABLE app_users ADD COLUMN IF NOT EXISTS personal_key_rotated_at TIMESTAMP WITH TIME ZONE;
+ALTER TABLE app_users ADD COLUMN IF NOT EXISTS legal_name VARCHAR(160);
+ALTER TABLE app_users ADD COLUMN IF NOT EXISTS identity_doc_type VARCHAR(16);
+ALTER TABLE app_users ADD COLUMN IF NOT EXISTS identity_doc_text TEXT;
 
 CREATE TABLE IF NOT EXISTS app_sessions (
     token UUID PRIMARY KEY,
@@ -59,10 +71,14 @@ CREATE TABLE IF NOT EXISTS app_email_verifications (
     token UUID PRIMARY KEY,
     user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    used_at TIMESTAMP WITH TIME ZONE
+    used_at TIMESTAMP WITH TIME ZONE,
+    demo_code VARCHAR(64)
 );
 
+ALTER TABLE app_email_verifications ADD COLUMN IF NOT EXISTS demo_code VARCHAR(64);
+
 CREATE INDEX IF NOT EXISTS idx_email_verifications_user_id ON app_email_verifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_email_verifications_user_demo_code ON app_email_verifications(user_id, demo_code);
 
 -- ===== 2FA (MFA) challenges =====
 
@@ -95,6 +111,19 @@ CREATE TABLE IF NOT EXISTS app_role_permissions (
     PRIMARY KEY(role_name, perm_key)
 );
 
+CREATE TABLE IF NOT EXISTS app_captcha_challenges (
+    id UUID PRIMARY KEY,
+    challenge_type VARCHAR(32) NOT NULL,
+    prompt_text TEXT NOT NULL,
+    answer_hash VARCHAR(255) NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    used_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_captcha_created_at ON app_captcha_challenges(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_captcha_expires_at ON app_captcha_challenges(expires_at);
+
 INSERT INTO app_roles(name) VALUES ('ADMIN')  ON CONFLICT DO NOTHING;
 INSERT INTO app_roles(name) VALUES ('SELLER') ON CONFLICT DO NOTHING;
 INSERT INTO app_roles(name) VALUES ('BUYER')  ON CONFLICT DO NOTHING;
@@ -121,6 +150,11 @@ INSERT INTO app_permissions(perm_key, description) VALUES ('bid:place','Place bi
 INSERT INTO app_permissions(perm_key, description) VALUES ('auction:create','Create auction') ON CONFLICT DO NOTHING;
 INSERT INTO app_permissions(perm_key, description) VALUES ('wallet:read','Read wallet') ON CONFLICT DO NOTHING;
 
+-- permissions for Orders
+INSERT INTO app_permissions(perm_key, description) VALUES ('order:read', 'Read order list') ON CONFLICT DO NOTHING;
+INSERT INTO app_permissions(perm_key, description) VALUES ('order:update', 'Update order and shipping status') ON CONFLICT DO NOTHING;
+INSERT INTO app_permissions(perm_key, description) VALUES ('order:dispute', 'Dispute an order') ON CONFLICT DO NOTHING;
+
 -- BUYER defaults
 INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('BUYER','profile:read') ON CONFLICT DO NOTHING;
 INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('BUYER','profile:update') ON CONFLICT DO NOTHING;
@@ -130,6 +164,8 @@ INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('BUYER','session:l
 INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('BUYER','session:revoke') ON CONFLICT DO NOTHING;
 INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('BUYER','mfa:manage') ON CONFLICT DO NOTHING;
 INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('BUYER','bid:place') ON CONFLICT DO NOTHING;
+INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('BUYER','order:read') ON CONFLICT DO NOTHING;
+INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('BUYER','order:dispute') ON CONFLICT DO NOTHING;
 
 -- SELLER defaults
 INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('SELLER','profile:read') ON CONFLICT DO NOTHING;
@@ -140,6 +176,8 @@ INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('SELLER','session:
 INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('SELLER','session:revoke') ON CONFLICT DO NOTHING;
 INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('SELLER','mfa:manage') ON CONFLICT DO NOTHING;
 INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('SELLER','auction:create') ON CONFLICT DO NOTHING;
+INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('SELLER','order:read') ON CONFLICT DO NOTHING;
+INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('SELLER','order:update') ON CONFLICT DO NOTHING;
 
 -- ADMIN defaults (superset)
 INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('ADMIN','profile:read') ON CONFLICT DO NOTHING;
@@ -158,6 +196,9 @@ INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('ADMIN','users:wri
 INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('ADMIN','bid:place') ON CONFLICT DO NOTHING;
 INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('ADMIN','auction:create') ON CONFLICT DO NOTHING;
 INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('ADMIN','wallet:read') ON CONFLICT DO NOTHING;
+INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('ADMIN','order:read') ON CONFLICT DO NOTHING;
+INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('ADMIN','order:update') ON CONFLICT DO NOTHING;
+INSERT INTO app_role_permissions(role_name, perm_key) VALUES ('ADMIN','order:dispute') ON CONFLICT DO NOTHING;
 
 -- ===== Outbox (event publishing, reliable via DB) =====
 
@@ -192,3 +233,37 @@ CREATE TABLE IF NOT EXISTS app_wallet_transactions (
 
 CREATE INDEX IF NOT EXISTS idx_wallet_transactions_user_id ON app_wallet_transactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_wallet_transactions_created_at ON app_wallet_transactions(created_at DESC);
+
+-- ===== ORDER =====
+CREATE TABLE IF NOT EXISTS app_orders (
+      id              BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+      auction_id      BIGINT                   NOT NULL,                   -- reference to BIDDING module
+      buyer_id        BIGINT                   NOT NULL REFERENCES app_users (id),
+      seller_id       BIGINT                   NOT NULL REFERENCES app_users (id),
+      status          VARCHAR(32)              NOT NULL DEFAULT 'PENDING', -- option: PENDING, PACKED, SHIPPED, DELIVERED, COMPLETED, DISPUTED
+      tracking_number VARCHAR(128),
+      created_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_orders_buyer_id ON app_orders(buyer_id);
+CREATE INDEX IF NOT EXISTS idx_orders_seller_id ON app_orders(seller_id);
+
+-- ===== NOTIFICATION =====
+CREATE TABLE IF NOT EXISTS app_notifications (
+     id         BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+     user_id    BIGINT                   NOT NULL REFERENCES app_users (id) ON DELETE CASCADE,
+     type       VARCHAR(64)              NOT NULL, -- e.g.: BID_PLACED, OUTBID, WINNER_DETERMINED, ORDER_UPDATE
+     title      VARCHAR(255)             NOT NULL,
+     message    TEXT                     NOT NULL,
+     is_read    BOOLEAN                  NOT NULL DEFAULT FALSE,
+     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS app_notification_preferences (
+    user_id       BIGINT PRIMARY KEY REFERENCES app_users (id) ON DELETE CASCADE,
+    email_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    push_enabled  BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON app_notifications(user_id);

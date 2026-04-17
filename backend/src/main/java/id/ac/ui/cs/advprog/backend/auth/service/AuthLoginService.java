@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.backend.auth.service;
 
+import id.ac.ui.cs.advprog.backend.auth.model.Role;
 import id.ac.ui.cs.advprog.backend.auth.repository.SessionRepository;
 import id.ac.ui.cs.advprog.backend.auth.repository.UserAuthRepository;
 import java.time.Clock;
@@ -45,11 +46,22 @@ public class AuthLoginService {
     }
 
     @Transactional
-    public LoginResult login(final String username, final String password, final ClientMeta meta) {
+    public LoginResult login(final String username, final String password, final String privateKey, final ClientMeta meta) {
         final UserAuthRepository.UserRow user = authenticator.authenticate(username, password);
-
         final Instant now = Instant.now(clock);
+
+        if (usesPrivateKeyLogin(user)) {
+            authenticator.verifyPersonalKey(user, privateKey);
+            sessionLimitService.enforce(user.id(), now);
+            final var pair = tokenService.issue(user.id(), now, new AuthTokenService.ClientMeta(meta.userAgent(), meta.ip()));
+            return new LoginResult.Tokens(pair);
+        }
+
         sessionLimitService.enforce(user.id(), now);
+
+        if (shouldAlwaysRequireOtp(user)) {
+            return mfaChallengeService.createChallenge(user, username, now);
+        }
 
         if (!user.mfaEnabled()) {
             final var pair = tokenService.issue(user.id(), now, new AuthTokenService.ClientMeta(meta.userAgent(), meta.ip()));
@@ -76,5 +88,16 @@ public class AuthLoginService {
     @Transactional
     public void disableMfa(final long userId) {
         mfaManagementService.disableAllMfa(userId);
+    }
+
+    private boolean shouldAlwaysRequireOtp(final UserAuthRepository.UserRow user) {
+        return user.role() != null && user.role() != Role.ADMIN;
+    }
+
+    private static boolean usesPrivateKeyLogin(final UserAuthRepository.UserRow user) {
+        return user.role() != null
+                && user.role() != Role.ADMIN
+                && user.personalKeyHash() != null
+                && !user.personalKeyHash().isBlank();
     }
 }

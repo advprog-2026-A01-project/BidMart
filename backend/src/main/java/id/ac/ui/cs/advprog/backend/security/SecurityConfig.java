@@ -54,7 +54,11 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // auth public (tambahkan sesuai implementasi kamu: verify-email, 2fa/verify kalau ada)
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/auth/captcha",
+                                "/api/db/ping"
+                        ).permitAll()
+
                         .requestMatchers(HttpMethod.POST,
                                 "/api/auth/register",
                                 "/api/auth/login",
@@ -63,14 +67,11 @@ public class SecurityConfig {
                                 "/api/auth/2fa/verify"
                         ).permitAll()
 
-                        // public profile for catalog
                         .requestMatchers(HttpMethod.GET, "/api/users/*/public-profile").permitAll()
 
-                        // admin only
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/", "/index.html", "/assets/**", "/vite.svg").permitAll()
 
-                        // healthcheck
-                        .requestMatchers(HttpMethod.GET, "/api/db/ping").permitAll()
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
                         .anyRequest().authenticated()
                 )
