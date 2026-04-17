@@ -306,7 +306,7 @@ export function AccountPanel() {
                     setLoginStep('otp')
                     setToast({ type: 'success', message: 'Masukkan OTP untuk melanjutkan login.' })
                 }
-            } catch {
+            } catch(e) {
                 const code = normalizeError(e)
                 setToast({
                     type: 'error',
