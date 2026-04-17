@@ -1,7 +1,7 @@
 package id.ac.ui.cs.advprog.backend.auth.service;
 
 import id.ac.ui.cs.advprog.backend.auth.model.AuthException;
-import id.ac.ui.cs.advprog.backend.auth.repository.UserAuthRepository;
+import id.ac.ui.cs.advprog.backend.auth.repository.UserSecurityRepository;
 import id.ac.ui.cs.advprog.backend.auth.util.TotpUtil;
 import java.time.Clock;
 import java.time.Instant;
@@ -17,31 +17,33 @@ public class AuthMfaManagementService {
 
     public record TotpSetup(String secret, String otpauthUrl) {}
 
-    private final UserAuthRepository userAuthRepository;
+    private final UserSecurityRepository userSecurityRepository;
     private final Clock clock;
 
-    public AuthMfaManagementService(final UserAuthRepository userAuthRepository, final Clock clock) {
-        this.userAuthRepository = userAuthRepository;
+    public AuthMfaManagementService(final UserSecurityRepository userSecurityRepository, final Clock clock) {
+        this.userSecurityRepository = userSecurityRepository;
         this.clock = clock;
     }
 
     @Transactional
     public void enableEmail(final long userId) {
-        userAuthRepository.setMfa(userId, true, METHOD_EMAIL);
+        userSecurityRepository.setMfa(userId, true, METHOD_EMAIL);
     }
 
     @Transactional
     public void disableAllMfa(final long userId) {
-        userAuthRepository.setMfa(userId, false, null);
+        userSecurityRepository.setMfa(userId, false, null);
     }
 
     @Transactional
     public TotpSetup setupTotp(final long userId, final String usernameForLabel) {
         final String secret = TotpUtil.generateBase32Secret(20);
-        userAuthRepository.setTotpSecret(userId, secret);
+        userSecurityRepository.setTotpSecret(userId, secret);
 
         final String issuer = "BidMart";
-        final String account = (usernameForLabel == null || usernameForLabel.isBlank()) ? ("user-" + userId) : usernameForLabel;
+        final String account = (usernameForLabel == null || usernameForLabel.isBlank())
+                ? ("user-" + userId)
+                : usernameForLabel;
         final String uri = TotpUtil.otpauthUri(issuer, account, secret);
         return new TotpSetup(secret, uri);
     }
@@ -49,19 +51,19 @@ public class AuthMfaManagementService {
     @Transactional
     public void enableTotp(final long userId, final String code) {
         final Instant now = Instant.now(clock);
-        final String secret = userAuthRepository.getTotpSecret(userId)
+        final String secret = userSecurityRepository.getTotpSecret(userId)
                 .orElseThrow(() -> new AuthException(HttpStatus.BAD_REQUEST, "totp_not_configured"));
 
         if (!TotpUtil.verifyCode(secret, code, now)) {
             throw new AuthException(HttpStatus.BAD_REQUEST, "invalid_totp_code");
         }
 
-        userAuthRepository.setMfa(userId, true, METHOD_TOTP);
+        userSecurityRepository.setMfa(userId, true, METHOD_TOTP);
     }
 
     @Transactional
     public void disableTotp(final long userId) {
-        userAuthRepository.setMfa(userId, false, null);
-        userAuthRepository.clearTotpSecret(userId);
+        userSecurityRepository.setMfa(userId, false, null);
+        userSecurityRepository.clearTotpSecret(userId);
     }
 }
