@@ -80,6 +80,11 @@ function initials(name: string) {
     return s || 'U'
 }
 
+function formatMissingFieldsMessage(fields: string[]) {
+    if (!fields.length) return 'Input belum lengkap atau tidak valid.'
+    return `Field berikut wajib diisi: ${fields.join(', ')}.`
+}
+
 export function AccountPanel() {
     const {
         user,
@@ -238,6 +243,21 @@ export function AccountPanel() {
     }
 
     async function onRegister() {
+        const missingFields: string[] = []
+
+        if (!username.trim()) missingFields.push('Username / Email')
+        if (!password.trim()) missingFields.push('Password')
+        if (!confirmPassword.trim()) missingFields.push('Tulis ulang password')
+        if (!documentFile) missingFields.push('Foto KTP/KTM')
+
+        if (missingFields.length > 0) {
+            setToast({
+                type: 'error',
+                message: formatMissingFieldsMessage(missingFields),
+            })
+            return
+        }
+
         const extracted = ocrText || await scanIdentityDocument(documentFile)
         if (!documentFile || !extracted) {
             return
@@ -296,6 +316,14 @@ export function AccountPanel() {
         setOtp('')
 
         if (loginStep === 'privateKey') {
+            if (!loginPrivateKey.trim()) {
+                setToast({
+                    type: 'error',
+                    message: formatMissingFieldsMessage(['Private Key']),
+                })
+                return
+            }
+
             try {
                 const response = await login(username, password, loginPrivateKey)
 
@@ -313,6 +341,19 @@ export function AccountPanel() {
                     message: prettyErrorMessage(code),
                 })
             }
+            return
+        }
+
+        const missingFields: string[] = []
+        if (!username.trim()) missingFields.push('Username / Email')
+        if (!password.trim()) missingFields.push('Password')
+        if (captcha?.enabled && !captchaAnswer.trim()) missingFields.push('Captcha')
+
+        if (missingFields.length > 0) {
+            setToast({
+                type: 'error',
+                message: formatMissingFieldsMessage(missingFields),
+            })
             return
         }
 
@@ -343,11 +384,17 @@ export function AccountPanel() {
                 await loadCaptcha()
                 setToast({
                     type: 'success',
-                    message: 'Captcha sudah lolos. Sekarang masukkan private key untuk melanjutkan login.',
+                    message: 'Captcha valid. Sekarang masukkan private key untuk melanjutkan login.',
                 })
-            } else {
-                await loadCaptcha()
+                return
             }
+
+            setCaptchaAnswer('')
+            await loadCaptcha()
+            setToast({
+                type: 'error',
+                message: prettyErrorMessage(code),
+            })
         }
     }
 
@@ -953,7 +1000,7 @@ export function AccountPanel() {
                                             disabled={loading || !loginPrivateKey.trim()}
                                             className="ap-primaryBtn"
                                         >
-                                            Lanjutkan Login
+                                            Login
                                         </button>
                                     ) : showLoginCredentialsStep ? (
                                         <button
