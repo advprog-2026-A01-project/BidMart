@@ -7,16 +7,17 @@ import org.springframework.boot.test.autoconfigure.jdbc.JdbcTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.jdbc.Sql;
 
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 @JdbcTest
-class JdbcWalletRepositoryTest {
+class WalletRepositoryTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
