@@ -238,6 +238,24 @@
     align-items: start;
 }
 
+/*Untuk captcha*/
+.ap-captchaBox {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 84px;
+    padding: 10px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 12px;
+    background: #f8fafc;
+}
+
+.ap-captchaImage {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
 .ap-previewCard {
     border: 1px solid var(--border);
     border-radius: 16px;
@@ -394,6 +412,113 @@
     }
 }
 
+/* ===== Account modal + admin responsiveness ===== */
+
+.ap-tableWrap {
+    width: 100%;
+    overflow-x: auto;
+    margin-top: 10px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.ap-table th,
+.ap-table td {
+    word-break: break-word;
+}
+
+.ap-adminActionWrap {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    min-width: min(100%, 320px);
+}
+
+.ap-adminActionWrap > button,
+.ap-adminActionWrap > select {
+    flex: 0 1 auto;
+}
+
+.ap-formGrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.ap-editorCard {
+    min-width: 0;
+}
+
+@media (max-width: 720px) {
+    .ap-formGrid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .ap-table {
+        min-width: 0;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .ap-table thead {
+        display: none;
+    }
+
+    .ap-table,
+    .ap-table tbody,
+    .ap-table tr,
+    .ap-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .ap-table tbody {
+        display: grid;
+        gap: 12px;
+    }
+
+    .ap-table tr {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: #fff;
+        overflow: hidden;
+    }
+
+    .ap-table td {
+        display: grid;
+        grid-template-columns: minmax(90px, 110px) minmax(0, 1fr);
+        gap: 10px;
+        padding: 10px 12px;
+        border-bottom: 1px solid #eee;
+        align-items: start;
+    }
+
+    .ap-table td:last-child {
+        border-bottom: 0;
+    }
+
+    .ap-table td::before {
+        content: attr(data-label);
+        font-weight: 700;
+        color: #111827;
+    }
+
+    .ap-adminActionWrap {
+        display: grid;
+        grid-template-columns: 1fr;
+        min-width: 0;
+        width: 100%;
+    }
+
+    .ap-adminActionWrap > button,
+    .ap-adminActionWrap > select {
+        width: 100%;
+    }
+}
+
 /* ===== Auth form tidy layout ===== */
 
 .ap-authShell {
@@ -490,6 +615,21 @@
 .ap-helpInfo {
     margin-top: 6px;
     color: #0056b3;
+}
+
+/* For notification toast */
+.ap-toastSuccess {
+    background: #ecfdf3;
+    border: 1px solid #abefc6;
+    color: #067647;
+}
+
+.ap-registerDocCard textarea {
+    width: 100%;
+    min-height: 96px;
+    box-sizing: border-box;
+    resize: vertical;
+    margin-top: 10px;
 }
 
 @media (max-width: 640px) {
@@ -595,3 +735,10 @@
     }
 }
 
+.ap-helpOk {
+    color: #067647;
+}
+
+.ap-helpWarn {
+    color: #b54708;
+}
