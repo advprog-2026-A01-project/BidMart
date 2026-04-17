@@ -39,7 +39,7 @@ export function AuthPanel() {
     async function onRegister() {
         setLog('registering...')
         try {
-            await register(username, password, requestedRole)
+            await register({username, password, requestedRole})
             setLog('register ok — check your email for the verification token')
             // Hapus auto-fill: if (lastVerificationToken) setVerifyToken(lastVerificationToken)
         } catch {
