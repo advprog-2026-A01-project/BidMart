@@ -19,8 +19,7 @@ public class ListingService {
         // status yang boleh publik: ACTIVE & EXTENDED
         List<ListingStatus> activeStatuses = List.of(ListingStatus.ACTIVE, ListingStatus.EXTENDED);
 
-        Specification<Listing> spec = Specification
-                .where(ListingSpecification.hasStatusIn(activeStatuses))
+        Specification<Listing> spec = ListingSpecification.hasStatusIn(activeStatuses)
                 .and(ListingSpecification.isNotExpired())
                 .and(ListingSpecification.hasKeyword(keyword))
                 .and(ListingSpecification.hasCategory(categoryId))
