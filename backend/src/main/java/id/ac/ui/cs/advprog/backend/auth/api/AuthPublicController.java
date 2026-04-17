@@ -8,6 +8,7 @@ import id.ac.ui.cs.advprog.backend.auth.service.AuthLoginService;
 import id.ac.ui.cs.advprog.backend.auth.service.AuthRegistrationService;
 import id.ac.ui.cs.advprog.backend.auth.service.AuthTokenService;
 import id.ac.ui.cs.advprog.backend.auth.service.CaptchaService;
+import id.ac.ui.cs.advprog.backend.auth.service.IdentityRegistrationCommand;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Duration;
 import java.util.Locale;
@@ -64,35 +65,19 @@ public class AuthPublicController {
         }
 
         final var token = registrationService.register(username, password, role);
-        return ResponseEntity.status(HttpStatus.CREATED).body(new RegisterResponse(true, token.toString(), null, null, null, null, null, null, null));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new RegisterResponse(true, token.toString(), null, null, null, null, null, null, null));
     }
 
     @PostMapping(value = "/register", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> registerWithIdentity(
-            @RequestParam("username") final String username,
-            @RequestParam("password") final String password,
-            @RequestParam("confirmPassword") final String confirmPassword,
-            @RequestParam("legalName") final String legalName,
-            @RequestParam(value = "requestedRole", required = false) final String requestedRole,
-            @RequestParam("documentType") final String documentType,
-            @RequestParam("documentExtractedText") final String documentExtractedText,
-            @RequestPart("documentImage") final MultipartFile documentImage
-    ) {
-        final Role role = parseRequestedRole(requestedRole);
+    public ResponseEntity<?> registerWithIdentity(@ModelAttribute final IdentityRegisterForm form) {
+        final Role role = form.parsedRequestedRole();
         if (role == null) {
             return ResponseEntity.badRequest().body(Map.of(ERROR_KEY, "invalid_role"));
         }
 
-        final var result = registrationService.registerWithIdentity(
-                normalizeUsername(username),
-                password,
-                confirmPassword,
-                legalName,
-                role,
-                documentType,
-                documentExtractedText,
-                documentImage
-        );
+        final var result = registrationService.registerWithIdentity(form.toCommand(role));
+
         return ResponseEntity.status(HttpStatus.CREATED).body(new RegisterResponse(
                 result.ok(),
                 result.verificationToken(),
@@ -109,7 +94,9 @@ public class AuthPublicController {
     @PostMapping("/verify-email")
     public ResponseEntity<?> verifyEmail(@RequestBody final VerifyEmailRequest body) {
         final String token = (body.token() == null) ? "" : body.token().trim();
-        if (token.isBlank()) return ResponseEntity.badRequest().body(Map.of(ERROR_KEY, "invalid_input"));
+        if (token.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of(ERROR_KEY, "invalid_input"));
+        }
         registrationService.verifyEmail(normalizeUsername(body.username()), token);
         return ResponseEntity.ok(Map.of("ok", true));
     }
@@ -119,7 +106,6 @@ public class AuthPublicController {
         final String username = normalizeUsername(body.username());
         final var meta = new AuthLoginService.ClientMeta(request.getHeader("User-Agent"), request.getRemoteAddr());
 
-        // Captcha hanya di login step awal
         if (body.privateKey() == null || body.privateKey().isBlank()) {
             captchaService.verify(body.captchaId(), body.captchaAnswer());
         }
@@ -156,7 +142,9 @@ public class AuthPublicController {
     }
 
     private static Role parseRequestedRole(final String requestedRole) {
-        if (requestedRole == null || requestedRole.isBlank()) return Role.BUYER;
+        if (requestedRole == null || requestedRole.isBlank()) {
+            return Role.BUYER;
+        }
         try {
             final Role parsed = Role.valueOf(requestedRole.trim().toUpperCase(Locale.ROOT));
             return (parsed == Role.ADMIN) ? null : parsed;
@@ -196,4 +184,80 @@ public class AuthPublicController {
     public record RefreshRequest(String refreshToken) {}
     public record TokenResponse(String accessToken, String refreshToken, String tokenType, long expiresIn) {}
     public record MfaChallengeResponse(boolean mfaRequired, String challengeId, String method, long expiresIn, String devCode) {}
+
+    public static class IdentityRegisterForm {
+        private String username;
+        private String password;
+        private String confirmPassword;
+        private String legalName;
+        private String requestedRole;
+        private String documentType;
+        private String documentExtractedText;
+        private MultipartFile documentImage;
+
+        public Role parsedRequestedRole() {
+            return parseRequestedRole(requestedRole);
+        }
+
+        public IdentityRegistrationCommand toCommand(final Role role) {
+            return new IdentityRegistrationCommand(
+                    normalizeUsername(username),
+                    password,
+                    confirmPassword,
+                    legalName,
+                    role,
+                    documentType,
+                    documentExtractedText,
+                    documentImage
+            );
+        }
+
+        public boolean hasIdentityDocument() {
+            return documentImage != null && !documentImage.isEmpty();
+        }
+
+        public boolean hasPasswordConfirmation() {
+            return confirmPassword != null && !confirmPassword.isBlank();
+        }
+
+        public boolean hasRequestedRole() {
+            return requestedRole != null && !requestedRole.isBlank();
+        }
+
+        public boolean hasLegalName() {
+            return legalName != null && !legalName.isBlank();
+        }
+
+        public void setUsername(final String username) {
+            this.username = username;
+        }
+
+        public void setPassword(final String password) {
+            this.password = password;
+        }
+
+        public void setConfirmPassword(final String confirmPassword) {
+            this.confirmPassword = confirmPassword;
+        }
+
+        public void setLegalName(final String legalName) {
+            this.legalName = legalName;
+        }
+
+        public void setRequestedRole(final String requestedRole) {
+            this.requestedRole = requestedRole;
+        }
+
+        public void setDocumentType(final String documentType) {
+            this.documentType = documentType;
+        }
+
+        public void setDocumentExtractedText(final String documentExtractedText) {
+            this.documentExtractedText = documentExtractedText;
+        }
+
+        public void setDocumentImage(final MultipartFile documentImage) {
+            this.documentImage = documentImage;
+        }
+    }
 }

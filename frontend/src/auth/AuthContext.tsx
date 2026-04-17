@@ -192,6 +192,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
             await AuthApi.logout(accessToken)
         } catch {
+            console.warn('Logout request failed after local cleanup', e)
         }
     }, [tokens?.accessToken])
 

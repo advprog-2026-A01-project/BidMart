@@ -1,6 +1,5 @@
 package id.ac.ui.cs.advprog.backend.auth.service;
 
-import id.ac.ui.cs.advprog.backend.auth.model.Role;
 import java.security.SecureRandom;
 import java.util.Locale;
 import org.springframework.stereotype.Service;
@@ -30,28 +29,23 @@ public class RandomPersonalKeyService implements PersonalKeyService {
 
     @Override
     public String buildDownloadFilename(final String username) {
-        final String safe = (username == null ? "user" : username.trim().toLowerCase(Locale.ROOT)).replaceAll("[^a-z0-9._-]", "_");
+        final String safe = (username == null ? "user" : username.trim().toLowerCase(Locale.ROOT))
+                .replaceAll("[^a-z0-9._-]", "_");
         return "bidmart-private-key-" + safe + ".txt";
     }
 
     @Override
-    public String buildDownloadContents(
-            final String username,
-            final String legalName,
-            final Role role,
-            final String rawKey,
-            final String issuedAtIso
-    ) {
+    public String buildDownloadContents(final PersonalKeyDocument document) {
         return String.join("\n",
                 "BidMart Private Key",
                 "====================",
-                "Username: " + safe(username),
-                "Legal name: " + safe(legalName),
-                "Role: " + ((role == null) ? "BUYER" : role.name()),
-                "Issued at: " + safe(issuedAtIso),
+                "Username: " + safe(document.username()),
+                "Legal name: " + safe(document.legalName()),
+                "Role: " + ((document.role() == null) ? "BUYER" : document.role().name()),
+                "Issued at: " + safe(document.issuedAtIso()),
                 "",
                 "Private key / OTP:",
-                rawKey,
+                document.rawKey(),
                 "",
                 "Simpan file ini baik-baik. Key ini dipakai saat login dan akan berubah kalau kamu melakukan rotate key dari akunmu.",
                 "Jangan bagikan file ini ke orang lain."

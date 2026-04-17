@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.backend.auth.service;
 
+import id.ac.ui.cs.advprog.backend.auth.model.AuthError;
 import id.ac.ui.cs.advprog.backend.auth.model.AuthException;
 import java.text.Normalizer;
 import java.util.Arrays;
@@ -20,36 +21,59 @@ public class ClientOcrIdentityDocumentValidationService implements IdentityDocum
             final String ocrText,
             final MultipartFile documentImage
     ) {
-        final String normalizedName = normalizeStrict(legalName);
-        final String normalizedOcr = normalizeStrict(ocrText);
+        validateDocumentImage(documentImage);
+
+        final String normalizedName = requireNormalizedName(legalName);
+        final String normalizedOcr = requireNormalizedOcr(ocrText);
         final String normalizedType = normalizeDocType(documentType);
 
+        ensureNameMatches(normalizedName, normalizedOcr);
+        return new VerifiedIdentityDocument(normalizedName, normalizedOcr, normalizedType);
+    }
+
+    private void validateDocumentImage(final MultipartFile documentImage) {
         if (documentImage == null || documentImage.isEmpty()) {
-            throw AuthException.identityDocumentRequired();
+            throw AuthException.of(AuthError.IDENTITY_DOCUMENT_REQUIRED);
         }
         if (documentImage.getSize() > MAX_UPLOAD_BYTES) {
-            throw AuthException.identityDocumentInvalid();
+            throw AuthException.of(AuthError.IDENTITY_DOCUMENT_INVALID);
         }
+        if (!isAcceptedImage(documentImage)) {
+            throw AuthException.of(AuthError.IDENTITY_DOCUMENT_INVALID);
+        }
+    }
 
+    private boolean isAcceptedImage(final MultipartFile documentImage) {
         final String contentType = safe(documentImage.getContentType());
         final String filename = safe(documentImage.getOriginalFilename()).toLowerCase(Locale.ROOT);
         final boolean imageContentType = contentType.startsWith("image/");
-        final boolean imageExtension = filename.endsWith(".png") || filename.endsWith(".jpg") || filename.endsWith(".jpeg") || filename.endsWith(".webp");
-        if (!imageContentType && !imageExtension) {
-            throw AuthException.identityDocumentInvalid();
-        }
+        final boolean imageExtension = filename.endsWith(".png")
+                || filename.endsWith(".jpg")
+                || filename.endsWith(".jpeg")
+                || filename.endsWith(".webp");
+        return imageContentType || imageExtension;
+    }
 
+    private String requireNormalizedName(final String legalName) {
+        final String normalizedName = normalizeStrict(legalName);
         if (normalizedName.isBlank()) {
-            throw AuthException.identityNameMismatch();
+            throw AuthException.of(AuthError.IDENTITY_NAME_MISMATCH);
         }
-        if (normalizedOcr.isBlank()) {
-            throw AuthException.ocrTextMissing();
-        }
-        if (!containsAllNameTokensStrict(normalizedName, normalizedOcr)) {
-            throw AuthException.identityNameMismatch();
-        }
+        return normalizedName;
+    }
 
-        return new VerifiedIdentityDocument(normalizedName, normalizedOcr, normalizedType);
+    private String requireNormalizedOcr(final String ocrText) {
+        final String normalizedOcr = normalizeStrict(ocrText);
+        if (normalizedOcr.isBlank()) {
+            throw AuthException.of(AuthError.OCR_TEXT_MISSING);
+        }
+        return normalizedOcr;
+    }
+
+    private void ensureNameMatches(final String normalizedName, final String normalizedOcr) {
+        if (!containsAllNameTokensStrict(normalizedName, normalizedOcr)) {
+            throw AuthException.of(AuthError.IDENTITY_NAME_MISMATCH);
+        }
     }
 
     private static boolean containsAllNameTokensStrict(final String normalizedName, final String normalizedOcr) {
@@ -75,7 +99,7 @@ public class ClientOcrIdentityDocumentValidationService implements IdentityDocum
     private static String normalizeDocType(final String raw) {
         final String normalized = safe(raw).trim().toUpperCase(Locale.ROOT);
         if (!"KTP".equals(normalized) && !"KTM".equals(normalized)) {
-            throw AuthException.identityDocumentInvalid();
+            throw AuthException.of(AuthError.IDENTITY_DOCUMENT_INVALID);
         }
         return normalized;
     }
