@@ -2,42 +2,31 @@ package id.ac.ui.cs.advprog.backend.auth.model;
 
 import org.springframework.http.HttpStatus;
 
-/*
-Tanggung jawab: error domain auth yang konsisten (code + status). Buatan sendiri
- */
 public class AuthException extends RuntimeException {
 
     private static final long serialVersionUID = 1L;
     private final String code;
     private final HttpStatus status;
 
-    // Constructor
     public AuthException(final HttpStatus status, final String code) {
         super(code);
         this.code = code;
         this.status = status;
     }
 
-    // Constructor
     public AuthException(final HttpStatus status, final String code, final Throwable cause) {
         super(code, cause);
         this.code = code;
         this.status = status;
     }
 
-    public String getCode() {
-        return code;
-    }
-
-    public HttpStatus getStatus() {
-        return status;
-    }
+    public String getCode() { return code; }
+    public HttpStatus getStatus() { return status; }
 
     public static AuthException invalidCredentials() {
         return new AuthException(HttpStatus.UNAUTHORIZED, "invalid_credentials");
     }
 
-    // -- Untuk Generate RandomKey for user upon register and login --
     public static AuthException invalidPrivateKey() {
         return new AuthException(HttpStatus.UNAUTHORIZED, "invalid_private_key");
     }
@@ -58,7 +47,6 @@ public class AuthException extends RuntimeException {
         return new AuthException(HttpStatus.FORBIDDEN, "email_not_verified");
     }
 
-    // -- Untuk Generate AuthException username, password, and other kinds of mismatch for user upon register and login --
     public static AuthException passwordMismatch() {
         return new AuthException(HttpStatus.BAD_REQUEST, "password_mismatch");
     }
@@ -81,6 +69,18 @@ public class AuthException extends RuntimeException {
 
     public static AuthException ocrTextMissing() {
         return new AuthException(HttpStatus.BAD_REQUEST, "ocr_text_missing");
+    }
+
+    public static AuthException captchaRequired() {
+        return new AuthException(HttpStatus.BAD_REQUEST, "captcha_required");
+    }
+
+    public static AuthException captchaInvalid() {
+        return new AuthException(HttpStatus.BAD_REQUEST, "captcha_invalid");
+    }
+
+    public static AuthException captchaExpired() {
+        return new AuthException(HttpStatus.BAD_REQUEST, "captcha_expired");
     }
 
     public static AuthException refreshTokenInvalid() {

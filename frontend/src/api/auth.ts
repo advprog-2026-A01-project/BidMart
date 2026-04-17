@@ -7,6 +7,20 @@ export type TokenResponse = {
     expiresIn: number
 }
 
+export type CaptchaResponse = {
+    captchaId: string | null
+    enabled: boolean
+    prompt: string | null
+    svgDataUri: string | null
+    expiresIn: number
+    devAnswer?: string | null
+}
+
+export type CaptchaPayload = {
+    captchaId: string
+    captchaAnswer: string
+}
+
 export type RegisterResponse = {
     ok: boolean
     verificationToken: string | null
@@ -82,6 +96,10 @@ export type TotpSetupResponse = {
     otpauthUrl: string
 }
 
+export async function issueCaptcha(): Promise<CaptchaResponse> {
+    return apiFetch('/api/auth/captcha')
+}
+
 export async function register(
     username: string,
     password: string,
@@ -120,11 +138,17 @@ export async function verifyEmail(token: string, username?: string): Promise<{ o
     })
 }
 
-export async function login(username: string, password: string, privateKey?: string): Promise<LoginResponse> {
+export async function login(username: string, password: string, privateKey?: string, captcha?: CaptchaPayload): Promise<LoginResponse> {
     return apiFetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password, privateKey }),
+        body: JSON.stringify({
+            username,
+            password,
+            privateKey,
+            captchaId: captcha?.captchaId ?? '',
+            captchaAnswer: captcha?.captchaAnswer ?? '',
+        }),
     })
 }
 

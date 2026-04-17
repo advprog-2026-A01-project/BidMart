@@ -7,6 +7,7 @@ import id.ac.ui.cs.advprog.backend.auth.repository.SessionRepository;
 import id.ac.ui.cs.advprog.backend.auth.service.AuthLoginService;
 import id.ac.ui.cs.advprog.backend.auth.service.AuthRegistrationService;
 import id.ac.ui.cs.advprog.backend.auth.service.AuthTokenService;
+import id.ac.ui.cs.advprog.backend.auth.service.CaptchaService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Duration;
 import java.util.Locale;
@@ -27,17 +28,25 @@ public class AuthPublicController {
     private final AuthLoginService loginService;
     private final AuthTokenService tokenService;
     private final AuthProperties props;
+    private final CaptchaService captchaService;
 
     public AuthPublicController(
             final AuthRegistrationService registrationService,
             final AuthLoginService loginService,
             final AuthTokenService tokenService,
-            final AuthProperties props
+            final AuthProperties props,
+            final CaptchaService captchaService
     ) {
         this.registrationService = registrationService;
         this.loginService = loginService;
         this.tokenService = tokenService;
         this.props = props;
+        this.captchaService = captchaService;
+    }
+
+    @GetMapping("/captcha")
+    public ResponseEntity<?> issueCaptcha() {
+        return ResponseEntity.ok(captchaService.issueChallenge());
     }
 
     @PostMapping(value = "/register", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -110,6 +119,11 @@ public class AuthPublicController {
         final String username = normalizeUsername(body.username());
         final var meta = new AuthLoginService.ClientMeta(request.getHeader("User-Agent"), request.getRemoteAddr());
 
+        // Captcha hanya di login step awal
+        if (body.privateKey() == null || body.privateKey().isBlank()) {
+            captchaService.verify(body.captchaId(), body.captchaAnswer());
+        }
+
         final var out = loginService.login(username, body.password(), body.privateKey(), meta);
         if (out instanceof AuthLoginService.LoginResult.Tokens t) {
             return ResponseEntity.ok(toTokenResponse(t.tokens()));
@@ -174,7 +188,9 @@ public class AuthPublicController {
     public record LoginRequest(
             @JsonAlias({"email"}) String username,
             String password,
-            @JsonAlias({"otp", "privateKey", "private_key"}) String privateKey
+            @JsonAlias({"otp", "privateKey", "private_key"}) String privateKey,
+            String captchaId,
+            String captchaAnswer
     ) {}
 
     public record RefreshRequest(String refreshToken) {}

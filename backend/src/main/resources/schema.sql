@@ -111,6 +111,19 @@ CREATE TABLE IF NOT EXISTS app_role_permissions (
     PRIMARY KEY(role_name, perm_key)
 );
 
+CREATE TABLE IF NOT EXISTS app_captcha_challenges (
+    id UUID PRIMARY KEY,
+    challenge_type VARCHAR(32) NOT NULL,
+    prompt_text TEXT NOT NULL,
+    answer_hash VARCHAR(255) NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    used_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_captcha_created_at ON app_captcha_challenges(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_captcha_expires_at ON app_captcha_challenges(expires_at);
+
 INSERT INTO app_roles(name) VALUES ('ADMIN')  ON CONFLICT DO NOTHING;
 INSERT INTO app_roles(name) VALUES ('SELLER') ON CONFLICT DO NOTHING;
 INSERT INTO app_roles(name) VALUES ('BUYER')  ON CONFLICT DO NOTHING;

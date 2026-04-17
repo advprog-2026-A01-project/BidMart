@@ -2,9 +2,6 @@ package id.ac.ui.cs.advprog.backend.auth.model;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-/*
-Tanggung jawab: konfigurasi auth (TTL token, max session, policy).
- */
 @SuppressWarnings("PMD.DataClass")
 @ConfigurationProperties(prefix = "auth")
 public class AuthProperties {
@@ -15,107 +12,69 @@ public class AuthProperties {
     private int maxSessionsPerUser = 5;
     private SessionOverflowPolicy overflowPolicy = SessionOverflowPolicy.REVOKE_OLDEST;
 
-    // new
-    private int emailVerifyTtlMinutes = 24 * 60;     // 24h
-    private int mfaChallengeTtlSeconds = 300;        // 5m
+    private int emailVerifyTtlMinutes = 24 * 60;
+    private int mfaChallengeTtlSeconds = 300;
     private int mfaMaxAttempts = 5;
 
-    // dev helper: expose verification token and email OTP in API response (optional)
     private boolean devExposeTokens = true;
 
-    // Demo static codes for non-admin users
     private boolean demoStaticCodesEnabled = true;
     private String demoEmailVerificationCode = "112233";
     private String demoEmailOtpCode = "445566";
 
-    public int getAccessTtlMinutes() {
-        return accessTtlMinutes;
-    }
+    private boolean captchaEnabled = true;
+    private int captchaTtlSeconds = 180;
+    private int captchaLength = 5;
+    private int captchaNoiseLines = 5;
+    private boolean captchaCaseSensitive = false;
 
-    public void setAccessTtlMinutes(final int v) {
-        this.accessTtlMinutes = v;
-    }
+    public int getAccessTtlMinutes() { return accessTtlMinutes; }
+    public void setAccessTtlMinutes(final int v) { this.accessTtlMinutes = v; }
 
-    public int getRefreshTtlDays() {
-        return refreshTtlDays;
-    }
+    public int getRefreshTtlDays() { return refreshTtlDays; }
+    public void setRefreshTtlDays(final int v) { this.refreshTtlDays = v; }
 
-    public void setRefreshTtlDays(final int v) {
-        this.refreshTtlDays = v;
-    }
+    public int getMaxSessionsPerUser() { return maxSessionsPerUser; }
+    public void setMaxSessionsPerUser(final int v) { this.maxSessionsPerUser = v; }
 
-    public int getMaxSessionsPerUser() {
-        return maxSessionsPerUser;
-    }
+    public SessionOverflowPolicy getOverflowPolicy() { return overflowPolicy; }
+    public void setOverflowPolicy(final SessionOverflowPolicy v) { this.overflowPolicy = v; }
 
-    public void setMaxSessionsPerUser(final int v) {
-        this.maxSessionsPerUser = v;
-    }
+    public int getEmailVerifyTtlMinutes() { return emailVerifyTtlMinutes; }
+    public void setEmailVerifyTtlMinutes(final int v) { this.emailVerifyTtlMinutes = v; }
 
-    public SessionOverflowPolicy getOverflowPolicy() {
-        return overflowPolicy;
-    }
+    public int getMfaChallengeTtlSeconds() { return mfaChallengeTtlSeconds; }
+    public void setMfaChallengeTtlSeconds(final int v) { this.mfaChallengeTtlSeconds = v; }
 
-    public void setOverflowPolicy(final SessionOverflowPolicy v) {
-        this.overflowPolicy = v;
-    }
+    public int getMfaMaxAttempts() { return mfaMaxAttempts; }
+    public void setMfaMaxAttempts(final int v) { this.mfaMaxAttempts = v; }
 
-    public int getEmailVerifyTtlMinutes() {
-        return emailVerifyTtlMinutes;
-    }
+    public boolean isDevExposeTokens() { return devExposeTokens; }
+    public void setDevExposeTokens(final boolean v) { this.devExposeTokens = v; }
 
-    public void setEmailVerifyTtlMinutes(final int v) {
-        this.emailVerifyTtlMinutes = v;
-    }
+    public boolean isDemoStaticCodesEnabled() { return demoStaticCodesEnabled; }
+    public void setDemoStaticCodesEnabled(final boolean v) { this.demoStaticCodesEnabled = v; }
 
-    public int getMfaChallengeTtlSeconds() {
-        return mfaChallengeTtlSeconds;
-    }
+    public String getDemoEmailVerificationCode() { return demoEmailVerificationCode; }
+    public void setDemoEmailVerificationCode(final String v) { this.demoEmailVerificationCode = v; }
 
-    public void setMfaChallengeTtlSeconds(final int v) {
-        this.mfaChallengeTtlSeconds = v;
-    }
+    public String getDemoEmailOtpCode() { return demoEmailOtpCode; }
+    public void setDemoEmailOtpCode(final String v) { this.demoEmailOtpCode = v; }
 
-    public int getMfaMaxAttempts() {
-        return mfaMaxAttempts;
-    }
+    public boolean isCaptchaEnabled() { return captchaEnabled; }
+    public void setCaptchaEnabled(final boolean captchaEnabled) { this.captchaEnabled = captchaEnabled; }
 
-    public void setMfaMaxAttempts(final int v) {
-        this.mfaMaxAttempts = v;
-    }
+    public int getCaptchaTtlSeconds() { return captchaTtlSeconds; }
+    public void setCaptchaTtlSeconds(final int captchaTtlSeconds) { this.captchaTtlSeconds = captchaTtlSeconds; }
 
-    public boolean isDevExposeTokens() {
-        return devExposeTokens;
-    }
+    public int getCaptchaLength() { return captchaLength; }
+    public void setCaptchaLength(final int captchaLength) { this.captchaLength = captchaLength; }
 
-    public void setDevExposeTokens(final boolean v) {
-        this.devExposeTokens = v;
-    }
+    public int getCaptchaNoiseLines() { return captchaNoiseLines; }
+    public void setCaptchaNoiseLines(final int captchaNoiseLines) { this.captchaNoiseLines = captchaNoiseLines; }
 
-    // Kebutuhan kode OTP dan MFA
-    public boolean isDemoStaticCodesEnabled() {
-        return demoStaticCodesEnabled;
-    }
-
-    public void setDemoStaticCodesEnabled(final boolean v) {
-        this.demoStaticCodesEnabled = v;
-    }
-
-    public String getDemoEmailVerificationCode() {
-        return demoEmailVerificationCode;
-    }
-
-    public void setDemoEmailVerificationCode(final String v) {
-        this.demoEmailVerificationCode = v;
-    }
-
-    public String getDemoEmailOtpCode() {
-        return demoEmailOtpCode;
-    }
-
-    public void setDemoEmailOtpCode(final String v) {
-        this.demoEmailOtpCode = v;
-    }
+    public boolean isCaptchaCaseSensitive() { return captchaCaseSensitive; }
+    public void setCaptchaCaseSensitive(final boolean captchaCaseSensitive) { this.captchaCaseSensitive = captchaCaseSensitive; }
 
     public enum SessionOverflowPolicy {
         REJECT,

@@ -5,27 +5,19 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="12a7340f-7112-42f3-875c-d91c8de1856c" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/api/AuthMfaController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/api/AuthMfaController.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/api/AuthPublicController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/api/AuthPublicController.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/model/AuthException.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/model/AuthException.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/repository/UserAuthRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/repository/UserAuthRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/service/AuthLoginService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/service/AuthLoginService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/service/AuthRegistrationService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/service/AuthRegistrationService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/service/ClientOcrIdentityDocumentValidationService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/service/ClientOcrIdentityDocumentValidationService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/service/UserAuthenticator.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/service/UserAuthenticator.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/model/AuthProperties.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/auth/model/AuthProperties.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/security/SecurityConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/id/ac/ui/cs/advprog/backend/security/SecurityConfig.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/resources/application.properties" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/src/main/resources/schema.sql" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/resources/schema.sql" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/test/java/id/ac/ui/cs/advprog/backend/auth/AuthLoginServiceTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/test/java/id/ac/ui/cs/advprog/backend/auth/AuthLoginServiceTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/docker-compose.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/App.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/api/auth.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/api/auth.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/auth/AccountPanel.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/auth/AccountPanel.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/auth/AccountPanel.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/auth/AccountPanel.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/auth/AuthContext.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/auth/AuthContext.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/auth/AuthContextStore.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/auth/AuthContextStore.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/auth/AuthPanel.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/auth/AuthPanel.tsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -41,8 +33,8 @@
     <option name="RECENT_TEMPLATES">
       <list>
         <option value="Interface" />
-        <option value="Class" />
         <option value="TypeScript File" />
+        <option value="Class" />
       </list>
     </option>
   </component>
@@ -114,6 +106,8 @@
       <updated>1776092270824</updated>
       <workItem from="1776092271876" duration="11829000" />
       <workItem from="1776237068039" duration="1361000" />
+      <workItem from="1776332802243" duration="7856000" />
+      <workItem from="1776382424390" duration="2426000" />
     </task>
     <servers />
   </component>

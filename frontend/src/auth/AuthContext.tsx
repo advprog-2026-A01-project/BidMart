@@ -57,12 +57,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     }, [])
 
-    const login = useCallback(async (username: string, password: string, privateKey?: string) => {
+    const login = useCallback(async (username: string, password: string, privateKey?: string, captcha?: AuthApi.CaptchaPayload) => {
         setLoading(true)
         setError(null)
         setPendingMfa(null)
         try {
-            const res = await AuthApi.login(username, password, privateKey)
+            const res = await AuthApi.login(username, password, privateKey, captcha)
 
             if (!('accessToken' in res)) {
                 setPendingMfa({
@@ -192,7 +192,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
             await AuthApi.logout(accessToken)
         } catch {
-            // ignore
         }
     }, [tokens?.accessToken])
 
