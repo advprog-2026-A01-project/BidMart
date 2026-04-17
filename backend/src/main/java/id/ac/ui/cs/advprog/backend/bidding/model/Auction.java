@@ -20,7 +20,6 @@ public class Auction {
         this.reservePrice = reservePrice;
         this.status = status;
         this.endTime = endTime;
-        this.winnerId = null;
     }
 
     public Auction(Long id, Double currentPrice, boolean active) {
@@ -29,7 +28,6 @@ public class Auction {
         this.reservePrice = 0.0;
         this.status = active ? AuctionStatus.ACTIVE : AuctionStatus.CLOSED;
         this.endTime = LocalDateTime.now().plusDays(1);
-        this.winnerId = null;
     }
 
     public Long getId() {
@@ -84,8 +82,6 @@ public class Auction {
         if (!isActive()) {
             throw new IllegalStateException("Auction is not active");
         }
-
-        this.status = AuctionStatus.CLOSED;
 
         if (highestBidderId != null && currentPrice >= reservePrice) {
             this.winnerId = highestBidderId;
