@@ -59,7 +59,7 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "RunOnceActivity.MCP Project settings loaded": "true",
-    "git-widget-placeholder": "staging"
+    "git-widget-placeholder": "feat/catalog"
   }
 }]]></component>
   <component name="RunManager">
