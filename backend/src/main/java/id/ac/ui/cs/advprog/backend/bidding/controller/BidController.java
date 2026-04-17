@@ -1,7 +1,9 @@
 package id.ac.ui.cs.advprog.backend.bidding.controller;
 
+import id.ac.ui.cs.advprog.backend.bidding.model.Auction;
 import id.ac.ui.cs.advprog.backend.bidding.model.Bid;
 import id.ac.ui.cs.advprog.backend.bidding.service.BidService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -28,5 +30,20 @@ public class BidController {
     @GetMapping("/{auctionId}")
     public List<Bid> getBidHistory(@PathVariable Long auctionId) {
         return bidService.getBidHistory(auctionId);
+    }
+
+    @PostMapping("/{auctionId}/close")
+    public ResponseEntity<Auction> closeAuction(@PathVariable Long auctionId) {
+        Auction auction = bidService.closeAuction(auctionId);
+        return ResponseEntity.ok(auction);
+    }
+
+    @GetMapping("/{auctionId}/winner")
+    public ResponseEntity<Bid> getWinner(@PathVariable Long auctionId) {
+        Bid winningBid = bidService.getWinningBid(auctionId);
+        if (winningBid == null) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(winningBid);
     }
 }
