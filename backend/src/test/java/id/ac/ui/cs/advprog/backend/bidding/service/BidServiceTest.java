@@ -27,32 +27,57 @@ class BidServiceTest {
     }
 
     @Test
-    void testPlaceBidSuccess() {
+    void testPlaceBidSuccessReturnsNotNull() {
         Bid bid = bidService.placeBid(1L, 10L, 12000.0);
-
-        assertNotNull(bid, "Bid should not be null");
-        assertEquals(12000.0, bid.getAmount());
-        assertEquals(12000.0, auctionRepository.findById(1L).getCurrentPrice());
+        assertNotNull(bid, "Bid should not be null after successfully placing a bid");
     }
 
     @Test
-    void testBidLowerThanCurrentPriceThrowsExceptionAndMessage() {
-        IllegalArgumentException exception = assertThrows(
+    void testPlaceBidSuccessHasCorrectAmount() {
+        Bid bid = bidService.placeBid(1L, 10L, 12000.0);
+        assertEquals(12000.0, bid.getAmount(), "Bid amount should match the placed amount");
+    }
+
+    @Test
+    void testPlaceBidSuccessUpdatesAuctionPrice() {
+        bidService.placeBid(1L, 10L, 12000.0);
+        assertEquals(12000.0, auctionRepository.findById(1L).getCurrentPrice(), "Auction current price should be updated");
+    }
+
+    @Test
+    void testBidLowerThanCurrentPriceThrowsException() {
+        assertThrows(
                 IllegalArgumentException.class,
                 () -> bidService.placeBid(1L, 10L, 9000.0),
-                "Should throw exception when bid lower than current price"
+                "Should throw exception when bid is lower than current price"
         );
-        assertEquals("Bid must be higher than current price", exception.getMessage());
     }
 
     @Test
-    void testAuctionNotFoundThrowsExceptionAndMessage() {
-        IllegalArgumentException exception = assertThrows(
+    void testBidLowerThanCurrentPriceExceptionMessage() {
+        try {
+            bidService.placeBid(1L, 10L, 9000.0);
+        } catch (IllegalArgumentException e) {
+            assertEquals("Bid must be higher than current price", e.getMessage(), "Exception message mismatch for low bid");
+        }
+    }
+
+    @Test
+    void testAuctionNotFoundThrowsException() {
+        assertThrows(
                 IllegalArgumentException.class,
                 () -> bidService.placeBid(99L, 10L, 15000.0),
-                "Should throw exception when auction not found"
+                "Should throw exception when auction is not found"
         );
-        assertEquals("Auction not found", exception.getMessage());
+    }
+
+    @Test
+    void testAuctionNotFoundExceptionMessage() {
+        try {
+            bidService.placeBid(99L, 10L, 15000.0);
+        } catch (IllegalArgumentException e) {
+            assertEquals("Auction not found", e.getMessage(), "Exception message mismatch for not found auction");
+        }
     }
 
     @Test
@@ -60,56 +85,94 @@ class BidServiceTest {
         Auction auction = auctionRepository.findById(1L);
         auction.closeAuction(null);
 
-        IllegalStateException exception = assertThrows(
+        assertThrows(
                 IllegalStateException.class,
                 () -> bidService.placeBid(1L, 10L, 15000.0),
-                "Should throw exception when auction is not active"
+                "Should throw exception when placing bid on inactive auction"
         );
-
-        assertEquals("Auction is not active", exception.getMessage());
     }
 
     @Test
-    void testGetBidHistory() {
+    void testAuctionNotActiveExceptionMessage() {
+        Auction auction = auctionRepository.findById(1L);
+        auction.closeAuction(null);
+
+        try {
+            bidService.placeBid(1L, 10L, 15000.0);
+        } catch (IllegalStateException e) {
+            assertEquals("Auction is not active", e.getMessage(), "Exception message mismatch for inactive auction");
+        }
+    }
+
+    @Test
+    void testGetBidHistorySize() {
         bidService.placeBid(1L, 10L, 12000.0);
         bidService.placeBid(1L, 11L, 15000.0);
 
         List<Bid> history = bidService.getBidHistory(1L);
-        assertEquals(2, history.size());
+        assertEquals(2, history.size(), "Bid history size should be 2");
     }
 
     @Test
-    void testCloseAuctionSuccessWithWinner() {
+    void testCloseAuctionSuccessWithWinnerStatus() {
         bidService.placeBid(1L, 10L, 15000.0);
-
         Auction closedAuction = bidService.closeAuction(1L);
 
-        assertEquals(AuctionStatus.WON, closedAuction.getStatus());
-        assertEquals(10L, closedAuction.getWinnerId());
+        assertEquals(AuctionStatus.WON, closedAuction.getStatus(), "Auction status should be WON");
     }
 
     @Test
-    void testCloseAuctionUnsoldDueToReservePrice() {
+    void testCloseAuctionSuccessWithWinnerId() {
+        bidService.placeBid(1L, 10L, 15000.0);
+        Auction closedAuction = bidService.closeAuction(1L);
+
+        assertEquals(10L, closedAuction.getWinnerId(), "Winning bidder ID should be 10L");
+    }
+
+    @Test
+    void testCloseAuctionUnsoldDueToReservePriceStatus() {
         Auction customAuction = new Auction(2L, 1000.0, 50000.0, AuctionStatus.ACTIVE, LocalDateTime.now().plusDays(1));
         auctionRepository.save(customAuction);
-
         bidService.placeBid(2L, 10L, 2000.0);
-
         Auction closedAuction = bidService.closeAuction(2L);
 
-        assertEquals(AuctionStatus.UNSOLD, closedAuction.getStatus());
-        assertNull(closedAuction.getWinnerId());
+        assertEquals(AuctionStatus.UNSOLD, closedAuction.getStatus(), "Auction status should be UNSOLD if reserve price is not met");
     }
 
     @Test
-    void testGetWinningBid() {
+    void testCloseAuctionUnsoldDueToReservePriceWinnerNull() {
+        Auction customAuction = new Auction(2L, 1000.0, 50000.0, AuctionStatus.ACTIVE, LocalDateTime.now().plusDays(1));
+        auctionRepository.save(customAuction);
+        bidService.placeBid(2L, 10L, 2000.0);
+        Auction closedAuction = bidService.closeAuction(2L);
+
+        assertNull(closedAuction.getWinnerId(), "Winner ID should be null if auction is unsold");
+    }
+
+    @Test
+    void testGetWinningBidNotNull() {
         bidService.placeBid(1L, 10L, 12000.0);
         bidService.placeBid(1L, 11L, 15000.0);
-
         Bid winningBid = bidService.getWinningBid(1L);
 
-        assertNotNull(winningBid);
-        assertEquals(15000.0, winningBid.getAmount());
-        assertEquals(11L, winningBid.getBidderId());
+        assertNotNull(winningBid, "Winning bid should not be null");
+    }
+
+    @Test
+    void testGetWinningBidAmount() {
+        bidService.placeBid(1L, 10L, 12000.0);
+        bidService.placeBid(1L, 11L, 15000.0);
+        Bid winningBid = bidService.getWinningBid(1L);
+
+        assertEquals(15000.0, winningBid.getAmount(), "Winning bid amount should be the highest placed bid");
+    }
+
+    @Test
+    void testGetWinningBidderId() {
+        bidService.placeBid(1L, 10L, 12000.0);
+        bidService.placeBid(1L, 11L, 15000.0);
+        Bid winningBid = bidService.getWinningBid(1L);
+
+        assertEquals(11L, winningBid.getBidderId(), "Winning bidder ID should be 11L");
     }
 }
