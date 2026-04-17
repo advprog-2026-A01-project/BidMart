@@ -34,8 +34,8 @@ export function WalletPanel({ onClose }: WalletPanelProps) {
             setInfo(wInfo);
             setHistory(wHistory);
             setError('');
-        } catch (e: any) {
-            setError(e.message || 'Failed to load wallet data');
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : 'Failed to load wallet data');
         } finally {
             setLoading(false);
         }
@@ -60,8 +60,8 @@ export function WalletPanel({ onClose }: WalletPanelProps) {
             await actionFn(amt);
             setActionAmount('');
             await loadData();
-        } catch (e: any) {
-            setError(e.message || 'Action failed');
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : 'Action failed');
         } finally {
             setIsProcessing(false);
         }
