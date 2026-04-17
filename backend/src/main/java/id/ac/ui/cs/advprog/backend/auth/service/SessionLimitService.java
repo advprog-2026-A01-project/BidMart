@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.backend.auth.service;
 
+import id.ac.ui.cs.advprog.backend.auth.model.AuthError;
 import id.ac.ui.cs.advprog.backend.auth.model.AuthException;
 import id.ac.ui.cs.advprog.backend.auth.model.AuthProperties;
 import id.ac.ui.cs.advprog.backend.auth.repository.SessionRepository;
@@ -31,7 +32,7 @@ public class SessionLimitService {
         if (active < maxSessions) return;
 
         if (overflowPolicy == AuthProperties.SessionOverflowPolicy.REJECT) {
-            throw AuthException.tooManySessions();
+            throw AuthException.of(AuthError.TOO_MANY_SESSIONS);
         }
 
         sessionRepository.revokeOldestSessions(userId, (active - maxSessions) + 1, now);

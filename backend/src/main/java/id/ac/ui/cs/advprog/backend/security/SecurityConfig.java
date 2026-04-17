@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.backend.security;
 
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -12,8 +13,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-
-import jakarta.servlet.http.HttpServletResponse;
 
 @Configuration
 public class SecurityConfig {
@@ -55,7 +54,11 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // auth public (tambahkan sesuai implementasi kamu: verify-email, 2fa/verify kalau ada)
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/auth/captcha",
+                                "/api/db/ping"
+                        ).permitAll()
+
                         .requestMatchers(HttpMethod.POST,
                                 "/api/auth/register",
                                 "/api/auth/login",
@@ -64,17 +67,11 @@ public class SecurityConfig {
                                 "/api/auth/2fa/verify"
                         ).permitAll()
 
-                        // public profile for catalog
                         .requestMatchers(HttpMethod.GET, "/api/users/*/public-profile").permitAll()
 
-                        // admin only
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
-
-                        // healthcheck
-                        .requestMatchers(HttpMethod.GET, "/api/db/ping").permitAll()
-
-                        // 👇 BERIKAN IZIN AKSES PUBLIK UNTUK FILE FRONTEND 👇
                         .requestMatchers("/", "/index.html", "/assets/**", "/vite.svg").permitAll()
+
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
                         .anyRequest().authenticated()
                 )

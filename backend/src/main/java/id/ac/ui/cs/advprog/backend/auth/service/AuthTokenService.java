@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.backend.auth.service;
 
+import id.ac.ui.cs.advprog.backend.auth.model.AuthError;
 import id.ac.ui.cs.advprog.backend.auth.model.AuthException;
 import id.ac.ui.cs.advprog.backend.auth.model.AuthProperties;
 import id.ac.ui.cs.advprog.backend.auth.repository.SessionRepository;
@@ -52,7 +53,7 @@ public class AuthTokenService {
                 now.plus(refreshTtl),
                 meta.userAgent(),
                 meta.ip()
-        ).orElseThrow(AuthException::refreshTokenInvalid);
+        ).orElseThrow(() -> AuthException.of(AuthError.INVALID_REFRESH_TOKEN));
     }
 
     @Transactional

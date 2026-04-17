@@ -1,74 +1,71 @@
 package id.ac.ui.cs.advprog.backend.wallet;
 
 import org.springframework.stereotype.Service;
-import java.util.ArrayList;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.ZonedDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.UUID;
 
 @Service
 public class WalletService {
     private final WalletRepository walletRepository;
-    private final List<WalletTransaction> transactionHistory = new ArrayList<>(); // In-memory audit trail
 
     public WalletService(WalletRepository walletRepository) {
         this.walletRepository = walletRepository;
     }
 
-    private WalletEntity getOrCreateWallet(String userId) {
-        WalletEntity wallet = walletRepository.findByUserId(userId);
-        if (wallet == null) {
-            wallet = new WalletEntity(userId, 0.0, 0.0);
-            walletRepository.save(wallet);
+    public WalletEntity getWallet(long userId) {
+        return walletRepository.getOrCreateWallet(userId);
+    }
+
+    @Transactional
+    public void topUp(long userId, double amount) {
+        walletRepository.getOrCreateWallet(userId);
+        if (!walletRepository.addBalance(userId, amount)) {
+            throw new IllegalStateException("Failed to top up wallet");
         }
-        return wallet;
+        WalletTransaction tx = new WalletTransaction(UUID.randomUUID(), userId, "TOPUP", amount, ZonedDateTime.now());
+        walletRepository.insertTransaction(tx);
     }
 
-    public double getBalance(String userId) {
-        return getOrCreateWallet(userId).getBalance();
+    @Transactional
+    public void withdraw(long userId, double amount) {
+        if (!walletRepository.withdraw(userId, amount)) {
+            throw new IllegalArgumentException("Insufficient balance for withdrawal or invalid amount");
+        }
+        WalletTransaction tx = new WalletTransaction(UUID.randomUUID(), userId, "WITHDRAW", amount, ZonedDateTime.now());
+        walletRepository.insertTransaction(tx);
     }
 
-    public double getHeldBalance(String userId) {
-        return getOrCreateWallet(userId).getHeldBalance();
+    @Transactional
+    public void holdForBid(long userId, double amount) {
+        if (!walletRepository.holdFunds(userId, amount)) {
+            throw new IllegalArgumentException("Insufficient balance to hold for bid");
+        }
+        WalletTransaction tx = new WalletTransaction(UUID.randomUUID(), userId, "HOLD", amount, ZonedDateTime.now());
+        walletRepository.insertTransaction(tx);
     }
 
-    public void topUp(String userId, double amount) {
-        WalletEntity wallet = getOrCreateWallet(userId);
-        wallet.addBalance(amount);
-        walletRepository.save(wallet);
-        transactionHistory.add(new WalletTransaction(userId, "TOPUP", amount));
+    @Transactional
+    public void releaseFromBid(long userId, double amount) {
+        if (!walletRepository.releaseFunds(userId, amount)) {
+            throw new IllegalArgumentException("Insufficient held funds to release");
+        }
+        WalletTransaction tx = new WalletTransaction(UUID.randomUUID(), userId, "RELEASE", amount, ZonedDateTime.now());
+        walletRepository.insertTransaction(tx);
     }
 
-    public void withdraw(String userId, double amount) {
-        WalletEntity wallet = getOrCreateWallet(userId);
-        wallet.withdraw(amount);
-        walletRepository.save(wallet);
-        transactionHistory.add(new WalletTransaction(userId, "WITHDRAW", amount));
+    @Transactional
+    public void payFromHeld(long userId, double amount) {
+        if (!walletRepository.convertToPayment(userId, amount)) {
+            throw new IllegalArgumentException("Insufficient held funds for payment");
+        }
+        WalletTransaction tx = new WalletTransaction(UUID.randomUUID(), userId, "PAYMENT", amount, ZonedDateTime.now());
+        walletRepository.insertTransaction(tx);
     }
 
-    public void holdForBid(String userId, double amount) {
-        WalletEntity wallet = getOrCreateWallet(userId);
-        wallet.holdFunds(amount);
-        walletRepository.save(wallet);
-        transactionHistory.add(new WalletTransaction(userId, "HOLD", amount));
-    }
-
-    public void releaseFromBid(String userId, double amount) {
-        WalletEntity wallet = getOrCreateWallet(userId);
-        wallet.releaseFunds(amount);
-        walletRepository.save(wallet);
-        transactionHistory.add(new WalletTransaction(userId, "RELEASE", amount));
-    }
-
-    public void payFromHeld(String userId, double amount) {
-        WalletEntity wallet = getOrCreateWallet(userId);
-        wallet.convertToPayment(amount);
-        walletRepository.save(wallet);
-        transactionHistory.add(new WalletTransaction(userId, "PAYMENT", amount));
-    }
-
-    public List<WalletTransaction> getHistory(String userId) {
-        return transactionHistory.stream()
-                .filter(t -> t.getUserId().equalsIgnoreCase(userId))
-                .collect(Collectors.toList());
+    public List<WalletTransaction> getHistory(long userId) {
+        return walletRepository.getTransactions(userId);
     }
 }
