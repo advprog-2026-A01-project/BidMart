@@ -28,12 +28,17 @@ class WalletRepositoryTest {
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.sql.init.mode", () -> "always");
+        registry.add("spring.datasource.url", () -> "jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH");
+        registry.add("spring.datasource.driverClassName", () -> "org.h2.Driver");
+        registry.add("spring.datasource.username", () -> "sa");
+        registry.add("spring.datasource.password", () -> "");
     }
 
     @BeforeEach
     void setUp() {
         repository = new WalletRepository(jdbcTemplate);
-        jdbcTemplate.update("INSERT INTO app_users(id, username, password_hash, role) VALUES (1, 'tester', 'hash', 'BUYER') ON CONFLICT DO NOTHING");
+        // Use plain insert instead of ON CONFLICT to avoid compatibility issues natively
+        jdbcTemplate.update("MERGE INTO app_users(id, username, password_hash, role) KEY(id) VALUES (1, 'tester', 'hash', 'BUYER')");
     }
 
     @Test
